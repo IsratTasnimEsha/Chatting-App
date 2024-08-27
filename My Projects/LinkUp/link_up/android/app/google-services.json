@@ -1,6 +1,7 @@
 {
   "project_info": {
     "project_number": "622008638968",
+    "firebase_url": "https://linkup-d8cca-default-rtdb.firebaseio.com",
     "project_id": "linkup-d8cca",
     "storage_bucket": "linkup-d8cca.appspot.com"
   },
@@ -12,7 +13,20 @@
           "package_name": "com.example.link_up"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "622008638968-8n3qb4dbp7ol33cle6jl4nj2k4t1hq4a.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.link_up",
+            "certificate_hash": "511af72fb5ec5a6efc73b15115bf557f70b1dcaf"
+          }
+        },
+        {
+          "client_id": "622008638968-tt5qvsnimivht0i34s5loc5ggqd281pi.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyCJrsVqehhvHVUd8NuEyZ45wnNE4YIn6W0"
@@ -20,7 +34,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "622008638968-tt5qvsnimivht0i34s5loc5ggqd281pi.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "622008638968-rlk1fedl8mqeuv0pgc1rqffr7840pddh.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.linkUp"
+              }
+            }
+          ]
         }
       }
     }

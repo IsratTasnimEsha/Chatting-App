@@ -46,6 +46,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '622008638968',
     projectId: 'linkup-d8cca',
     authDomain: 'linkup-d8cca.firebaseapp.com',
+    databaseURL: 'https://linkup-d8cca-default-rtdb.firebaseio.com',
     storageBucket: 'linkup-d8cca.appspot.com',
     measurementId: 'G-1GPMNCTB78',
   );
@@ -55,6 +56,7 @@ class DefaultFirebaseOptions {
     appId: '1:622008638968:android:a7790f49ad8ec4949eca0d',
     messagingSenderId: '622008638968',
     projectId: 'linkup-d8cca',
+    databaseURL: 'https://linkup-d8cca-default-rtdb.firebaseio.com',
     storageBucket: 'linkup-d8cca.appspot.com',
   );
 
@@ -63,7 +65,10 @@ class DefaultFirebaseOptions {
     appId: '1:622008638968:ios:fe8e99045e05e7259eca0d',
     messagingSenderId: '622008638968',
     projectId: 'linkup-d8cca',
+    databaseURL: 'https://linkup-d8cca-default-rtdb.firebaseio.com',
     storageBucket: 'linkup-d8cca.appspot.com',
+    androidClientId: '622008638968-8n3qb4dbp7ol33cle6jl4nj2k4t1hq4a.apps.googleusercontent.com',
+    iosClientId: '622008638968-rlk1fedl8mqeuv0pgc1rqffr7840pddh.apps.googleusercontent.com',
     iosBundleId: 'com.example.linkUp',
   );
 
@@ -72,7 +77,10 @@ class DefaultFirebaseOptions {
     appId: '1:622008638968:ios:fe8e99045e05e7259eca0d',
     messagingSenderId: '622008638968',
     projectId: 'linkup-d8cca',
+    databaseURL: 'https://linkup-d8cca-default-rtdb.firebaseio.com',
     storageBucket: 'linkup-d8cca.appspot.com',
+    androidClientId: '622008638968-8n3qb4dbp7ol33cle6jl4nj2k4t1hq4a.apps.googleusercontent.com',
+    iosClientId: '622008638968-rlk1fedl8mqeuv0pgc1rqffr7840pddh.apps.googleusercontent.com',
     iosBundleId: 'com.example.linkUp',
   );
 
@@ -82,7 +90,9 @@ class DefaultFirebaseOptions {
     messagingSenderId: '622008638968',
     projectId: 'linkup-d8cca',
     authDomain: 'linkup-d8cca.firebaseapp.com',
+    databaseURL: 'https://linkup-d8cca-default-rtdb.firebaseio.com',
     storageBucket: 'linkup-d8cca.appspot.com',
     measurementId: 'G-0SSV10NWYY',
   );
+
 }
