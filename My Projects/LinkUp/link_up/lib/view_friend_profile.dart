@@ -4,6 +4,7 @@ import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:link_up/user_message.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:android_intent_plus/android_intent.dart';
 import 'package:android_intent_plus/flag.dart';
@@ -486,6 +487,12 @@ class _ViewFriendProfilePageState extends State<ViewFriendProfilePage> {
                     ElevatedButton.icon(
                       onPressed: () {
                         // Implement Add Friend functionality here
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => UserMessagePage(email: widget.other_email, other_email: widget.email),
+                          ),
+                        );
                       },
                       style: ElevatedButton.styleFrom(
                         primary: Colors.white,
