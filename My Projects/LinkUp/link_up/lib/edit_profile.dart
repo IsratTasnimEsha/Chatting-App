@@ -47,7 +47,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
   void _loadUserData() async {
     final DatabaseReference ref =
-        FirebaseDatabase.instance.ref("users/${widget.email}");
+    FirebaseDatabase.instance.ref("users/${widget.email}");
 
     DataSnapshot snapshot = await ref.get();
 
@@ -70,7 +70,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
       // Retrieve the download URL
       String downloadUrl =
-          await FirebaseStorage.instance.ref(filePath).getDownloadURL();
+      await FirebaseStorage.instance.ref(filePath).getDownloadURL();
 
       // Update the state with the profile image URL
       setState(() {
@@ -81,7 +81,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
       print('Failed to load profile image: $e');
       setState(() {
         _profileImageUrl =
-            null; // Set to null to handle cases where the image fails to load
+        null; // Set to null to handle cases where the image fails to load
       });
     }
   }
@@ -94,7 +94,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
   // Create a reference to your Firebase Realtime Database
   final DatabaseReference _dbRef =
-      FirebaseDatabase.instance.reference().child('users');
+  FirebaseDatabase.instance.reference().child('users');
 
   void _toggleNameEditing() async {
     setState(() {
@@ -358,8 +358,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
                           labelStyle: TextStyle(fontWeight: FontWeight.normal),
                           border: _isNameEditing
                               ? UnderlineInputBorder(
-                                  borderSide: BorderSide(color: color_1),
-                                )
+                            borderSide: BorderSide(color: color_1),
+                          )
                               : InputBorder.none,
                           contentPadding: const EdgeInsets.symmetric(
                               horizontal: 8.0, vertical: 8.0),
@@ -367,13 +367,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
                           fillColor: Colors.transparent,
                           enabledBorder: _isNameEditing
                               ? UnderlineInputBorder(
-                                  borderSide: BorderSide(color: color_1),
-                                )
+                            borderSide: BorderSide(color: color_1),
+                          )
                               : InputBorder.none,
                           focusedBorder: _isNameEditing
                               ? UnderlineInputBorder(
-                                  borderSide: BorderSide(color: color_1),
-                                )
+                            borderSide: BorderSide(color: color_1),
+                          )
                               : InputBorder.none,
                         ),
                         style: const TextStyle(fontWeight: FontWeight.normal),
@@ -413,8 +413,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
                           ),
                           border: _isPhoneEditing
                               ? UnderlineInputBorder(
-                                  borderSide: BorderSide(color: color_1),
-                                )
+                            borderSide: BorderSide(color: color_1),
+                          )
                               : InputBorder.none,
                           contentPadding: const EdgeInsets.symmetric(
                               horizontal: 8.0, vertical: 8.0),
@@ -422,13 +422,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
                           fillColor: Colors.transparent,
                           enabledBorder: _isPhoneEditing
                               ? UnderlineInputBorder(
-                                  borderSide: BorderSide(color: color_1),
-                                )
+                            borderSide: BorderSide(color: color_1),
+                          )
                               : InputBorder.none,
                           focusedBorder: _isPhoneEditing
                               ? UnderlineInputBorder(
-                                  borderSide: BorderSide(color: color_1),
-                                )
+                            borderSide: BorderSide(color: color_1),
+                          )
                               : InputBorder.none,
                         ),
                         style: TextStyle(fontWeight: FontWeight.normal),
@@ -465,8 +465,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
                           labelStyle: TextStyle(fontWeight: FontWeight.normal),
                           border: _isAddressEditing
                               ? UnderlineInputBorder(
-                                  borderSide: BorderSide(color: color_1),
-                                )
+                            borderSide: BorderSide(color: color_1),
+                          )
                               : InputBorder.none,
                           contentPadding: const EdgeInsets.symmetric(
                               horizontal: 8.0, vertical: 8.0),
@@ -474,13 +474,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
                           fillColor: Colors.transparent,
                           enabledBorder: _isAddressEditing
                               ? UnderlineInputBorder(
-                                  borderSide: BorderSide(color: color_1),
-                                )
+                            borderSide: BorderSide(color: color_1),
+                          )
                               : InputBorder.none,
                           focusedBorder: _isAddressEditing
                               ? UnderlineInputBorder(
-                                  borderSide: BorderSide(color: color_1),
-                                )
+                            borderSide: BorderSide(color: color_1),
+                          )
                               : InputBorder.none,
                         ),
                         style: const TextStyle(fontWeight: FontWeight.normal),
@@ -509,81 +509,81 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     Expanded(
                       child: _isGenderEditing
                           ? DropdownButtonFormField<String>(
-                              decoration: InputDecoration(
-                                labelText: 'Gender',
-                                labelStyle: const TextStyle(
-                                    fontWeight: FontWeight.normal),
-                                // No explicit font size
-                                border: InputBorder.none,
-                                // No border during editing
-                                enabledBorder: InputBorder.none,
-                                // No border when not focused
-                                focusedBorder: InputBorder.none,
-                                // No border when focused
-                                contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 8.0, vertical: 8.0),
-                              ),
-                              items: const [
-                                DropdownMenuItem(
-                                  value: 'Male',
-                                  child: Padding(
-                                    padding:
-                                        EdgeInsets.symmetric(horizontal: 0.0),
-                                    child: Text('Male',
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                            fontWeight: FontWeight
-                                                .normal)), // No explicit font size
-                                  ),
-                                ),
-                                DropdownMenuItem(
-                                  value: 'Female',
-                                  child: Padding(
-                                    padding:
-                                        EdgeInsets.symmetric(horizontal: 0.0),
-                                    child: Text('Female',
-                                        style: TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight
-                                                .normal)), // No explicit font size
-                                  ),
-                                ),
-                              ],
-                              onChanged: (String? newValue) {
-                                setState(() {
-                                  _selectedGender = newValue;
-                                });
-                              },
-                              hint: const Text(
-                                'Select your gender',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                    fontWeight: FontWeight.normal), // No explicit font size
-                              ),
-                              dropdownColor: Colors.white,
-                              isExpanded: true,
-                              alignment: Alignment.centerLeft,
-                              borderRadius: BorderRadius.circular(12.0),
-                              menuMaxHeight: 200,
-                            )
-                          : InputDecorator(
-                              decoration: InputDecoration(
-                                labelText: 'Gender',
-                                labelStyle: const TextStyle(
-                                    fontWeight: FontWeight.normal),
-                                // No explicit font size
-                                border: InputBorder.none,
-                                // No border when not editing
-                                contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 8.0, vertical: 8.0),
-                              ),
-                              child: Text(
-                                _selectedGender ?? 'Not selected',
-                                style: const TextStyle(
-                                    fontWeight: FontWeight
-                                        .normal), // No explicit font size
-                              ),
+                        decoration: InputDecoration(
+                          labelText: 'Gender',
+                          labelStyle: const TextStyle(
+                              fontWeight: FontWeight.normal),
+                          // No explicit font size
+                          border: InputBorder.none,
+                          // No border during editing
+                          enabledBorder: InputBorder.none,
+                          // No border when not focused
+                          focusedBorder: InputBorder.none,
+                          // No border when focused
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 8.0, vertical: 8.0),
+                        ),
+                        items: const [
+                          DropdownMenuItem(
+                            value: 'Male',
+                            child: Padding(
+                              padding:
+                              EdgeInsets.symmetric(horizontal: 0.0),
+                              child: Text('Male',
+                                  style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight
+                                          .normal)), // No explicit font size
                             ),
+                          ),
+                          DropdownMenuItem(
+                            value: 'Female',
+                            child: Padding(
+                              padding:
+                              EdgeInsets.symmetric(horizontal: 0.0),
+                              child: Text('Female',
+                                  style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight
+                                          .normal)), // No explicit font size
+                            ),
+                          ),
+                        ],
+                        onChanged: (String? newValue) {
+                          setState(() {
+                            _selectedGender = newValue;
+                          });
+                        },
+                        hint: const Text(
+                          'Select your gender',
+                          style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.normal), // No explicit font size
+                        ),
+                        dropdownColor: Colors.white,
+                        isExpanded: true,
+                        alignment: Alignment.centerLeft,
+                        borderRadius: BorderRadius.circular(12.0),
+                        menuMaxHeight: 200,
+                      )
+                          : InputDecorator(
+                        decoration: InputDecoration(
+                          labelText: 'Gender',
+                          labelStyle: const TextStyle(
+                              fontWeight: FontWeight.normal),
+                          // No explicit font size
+                          border: InputBorder.none,
+                          // No border when not editing
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 8.0, vertical: 8.0),
+                        ),
+                        child: Text(
+                          _selectedGender ?? 'Not selected',
+                          style: const TextStyle(
+                              fontWeight: FontWeight
+                                  .normal), // No explicit font size
+                        ),
+                      ),
                     ),
                     IconButton(
                       icon: Icon(
@@ -607,8 +607,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
                           labelStyle: TextStyle(fontWeight: FontWeight.normal),
                           border: _isAboutMeEditing
                               ? UnderlineInputBorder(
-                                  borderSide: BorderSide(color: color_1),
-                                )
+                            borderSide: BorderSide(color: color_1),
+                          )
                               : InputBorder.none,
                           contentPadding: const EdgeInsets.symmetric(
                               horizontal: 8.0, vertical: 8.0),
@@ -616,13 +616,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
                           fillColor: Colors.transparent,
                           enabledBorder: _isAboutMeEditing
                               ? UnderlineInputBorder(
-                                  borderSide: BorderSide(color: color_1),
-                                )
+                            borderSide: BorderSide(color: color_1),
+                          )
                               : InputBorder.none,
                           focusedBorder: _isAboutMeEditing
                               ? UnderlineInputBorder(
-                                  borderSide: BorderSide(color: color_1),
-                                )
+                            borderSide: BorderSide(color: color_1),
+                          )
                               : InputBorder.none,
                         ),
                         style: const TextStyle(fontWeight: FontWeight.normal),
@@ -700,7 +700,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                               try {
                                 await FirebaseStorage.instance
                                     .ref(
-                                        'users/${widget.email}/profile_pic.png')
+                                    'users/${widget.email}/profile_pic.png')
                                     .delete();
                               } catch (e) {
                                 print("Error deleting photo: $e");

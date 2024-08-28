@@ -6,6 +6,7 @@ import 'signup.dart'; // Import your SignUpPage
 import 'signin.dart'; // Import your SignInPage
 import 'home.dart';
 import 'view_profile.dart';
+import 'view_friend_profile.dart';
 
 const Color color_1 = Color(0xFF8ba16a);
 
@@ -50,11 +51,6 @@ class MyApp extends StatelessWidget {
         // Define your routes here
         '/signin': (context) => SignInPage(),
         '/signup': (context) => SignUpPage(),
-        '/viewFriendProfile': (context) => ViewProfilePage(
-          // Assuming ViewProfilePage takes email as an argument
-          email: ModalRoute.of(context)!.settings.arguments as String,
-          other_email: ModalRoute.of(context)!.settings.arguments as String,
-        ),
       },
       onGenerateRoute: (settings) {
         if (settings.name == '/viewProfile') {
@@ -69,8 +65,19 @@ class MyApp extends StatelessWidget {
             },
           );
         }
-      },
+        if (settings.name == '/viewFriendProfile') {
+          final args = settings.arguments as Map<String, String>;
 
+          return MaterialPageRoute(
+            builder: (context) {
+              return ViewFriendProfilePage(
+                email: args['email']!,
+                other_email: args['other_email']!,
+              );
+            },
+          );
+        }
+      },
     );
   }
 

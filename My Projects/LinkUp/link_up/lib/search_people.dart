@@ -1,6 +1,7 @@
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
+import 'package:shimmer/shimmer.dart';
 
 const Color color_1 = Color(0xFF8ba16a);
 
@@ -19,151 +20,103 @@ class _SearchPeoplePageState extends State<SearchPeoplePage> {
 
   Map<String, String> _userNames = {};
   Map<String, String?> _profilePics = {};
-  Set<String> _sentRequests = {};
+  Set<String> _requestSents = {};
   Set<String> _friendRequests = {};
   Set<String> _friends = {};
-  Set<String> _blockeds = {};
-  Set<String> _blockedBys = {};
+  Set<String> _blockedContacts = {};
+  Set<String> _blockedByContacts = {};
   String _searchQuery = '';
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _loadSentRequests();
-    _loadFriendRequests();
-    _loadFriends();
-    _loadBlockeds();
-    _loadBlockedBys();
-    _loadPeople();
+    _initCombinedListeners();
   }
 
-  Future<void> _loadSentRequests() async {
-    try {
-      final snapshot = await FirebaseDatabase.instance
-          .ref("users/${widget.email}/request_sent")
-          .get();
-
-      if (snapshot.exists) {
-        final requests = snapshot.children;
-
-        setState(() {
-          for (final request in requests) {
-            final sentEmail = request.value.toString();
-            _sentRequests.add(sentEmail);
-          }
-        });
-      }
-    } catch (e) {
-      print('Failed to load sent requests: $e');
-    }
+  @override
+  void dispose() {
+    _usersRef.onValue.drain();
+    FirebaseDatabase.instance.ref("users/${widget.email}").onValue.drain();
+    super.dispose();
   }
 
-  Future<void> _loadFriendRequests() async {
-    try {
-      final snapshot = await FirebaseDatabase.instance
-          .ref("users/${widget.email}/friend_request")
-          .get();
+  void _initCombinedListeners() {
+    final userRef = FirebaseDatabase.instance.ref("users/${widget.email}");
+    userRef.onValue.listen((event) async {
+      final snapshot = event.snapshot;
 
       if (snapshot.exists) {
-        final requests = snapshot.children;
+        final userSnapshot = snapshot.value as Map;
 
-        setState(() {
-          for (final request in requests) {
-            final sentEmail = request.value.toString();
-            _friendRequests.add(sentEmail);
-          }
-        });
-      }
-    } catch (e) {
-      print('Failed to load friend requests: $e');
-    }
-  }
+        // Debugging: Print the snapshot data
+        print('User Snapshot: $userSnapshot');
 
-  Future<void> _loadFriends() async {
-    try {
-      final snapshot = await FirebaseDatabase.instance
-          .ref("users/${widget.email}/friend")
-          .get();
+        Set<String> updatedRequestSents = {};
+        Set<String> updatedFriendRequests = {};
+        Set<String> updatedFriends = {};
+        Set<String> updatedBlockedContacts = {};
+        Set<String> updatedBlockedByContacts = {};
 
-      if (snapshot.exists) {
-        final requests = snapshot.children;
+        if (userSnapshot.containsKey('request_sent')) {
+          updatedRequestSents = Set<String>.from(userSnapshot['request_sent'].values);
+        }
 
-        setState(() {
-          for (final request in requests) {
-            final sentEmail = request.value.toString();
-            _friends.add(sentEmail);
-          }
-        });
-      }
-    } catch (e) {
-      print('Failed to load friends: $e');
-    }
-  }
+        if (userSnapshot.containsKey('friend_request')) {
+          updatedFriendRequests = Set<String>.from(userSnapshot['friend_request'].values);
+        }
 
-  Future<void> _loadBlockeds() async {
-    try {
-      final snapshot = await FirebaseDatabase.instance
-          .ref("users/${widget.email}/blocked")
-          .get();
+        if (userSnapshot.containsKey('friend')) {
+          updatedFriends = Set<String>.from(userSnapshot['friend'].values);
+        }
 
-      if (snapshot.exists) {
-        final requests = snapshot.children;
+        if (userSnapshot.containsKey('blocked')) {
+          updatedBlockedContacts = Set<String>.from(userSnapshot['blocked'].values);
+        }
 
-        setState(() {
-          for (final request in requests) {
-            final sentEmail = request.value.toString();
-            _blockeds.add(sentEmail);
-          }
-        });
-      }
-    } catch (e) {
-      print('Failed to load blockeds: $e');
-    }
-  }
+        if (userSnapshot.containsKey('blockedBy')) {
+          updatedBlockedByContacts = Set<String>.from(userSnapshot['blockedBy'].values);
+        }
 
-  Future<void> _loadBlockedBys() async {
-    try {
-      final snapshot = await FirebaseDatabase.instance
-          .ref("users/${widget.email}/blocked")
-          .get();
+        // Debugging: Print updated blocked contacts
+        print('Blocked Contacts: $updatedBlockedContacts');
+        print('Blocked By Contacts: $updatedBlockedByContacts');
 
-      if (snapshot.exists) {
-        final requests = snapshot.children;
+        final Map<String, String> newUserNames = {};
+        final Map<String, String?> newProfilePics = {};
 
-        setState(() {
-          for (final request in requests) {
-            final sentEmail = request.value.toString();
-            _blockedBys.add(sentEmail);
-          }
-        });
-      }
-    } catch (e) {
-      print('Failed to load blocked by s: $e');
-    }
-  }
+        final allUsersSnapshot = await _usersRef.get();
+        if (allUsersSnapshot.exists) {
+          for (final person in allUsersSnapshot.children) {
+            final email = person.key;
+            if (email != null &&
+                email != widget.email &&
+                !updatedRequestSents.contains(email) &&
+                !updatedFriendRequests.contains(email) &&
+                !updatedFriends.contains(email) &&
+                !updatedBlockedContacts.contains(email) &&
+                !updatedBlockedByContacts.contains(email)) {
+              final name = person.child('name').value.toString();
+              final profilePicUrl = await _loadProfilePic(email);
 
-  Future<void> _loadPeople() async {
-    try {
-      final snapshot = await _usersRef.get();
-      if (snapshot.exists) {
-        final people = snapshot.children;
-
-        for (final person in people) {
-          final email = person.key;
-          if (email != null && email != widget.email && !_sentRequests.contains(email) && !_friendRequests.contains(email) && !_friends.contains(email) && !_blockeds.contains(email) && !_blockedBys.contains(email)) {
-            final name = person.child('name').value.toString();
-            final profilePicUrl = await _loadProfilePic(email);
-
-            setState(() {
-              _userNames[email] = name;
-              _profilePics[email] = profilePicUrl;
-            });
+              newUserNames[email] = name;
+              newProfilePics[email] = profilePicUrl;
+            }
           }
         }
+
+        setState(() {
+          _requestSents = updatedRequestSents;
+          _friendRequests = updatedFriendRequests;
+          _friends = updatedFriends;
+          _blockedContacts = updatedBlockedContacts;
+          _blockedByContacts = updatedBlockedByContacts;
+          _userNames = newUserNames;
+          _profilePics = newProfilePics;
+          _isLoading = false;
+        });
       }
-    } catch (e) {
-      print('Failed to load people: $e');
-    }
+    });
   }
 
   Future<String?> _loadProfilePic(String email) async {
@@ -193,10 +146,15 @@ class _SearchPeoplePageState extends State<SearchPeoplePage> {
     FirebaseDatabase.instance.ref("users/$e1/friend_request/");
     await ref2.child(formattedTime).set(e2);
 
-    // Update the UI to remove the user from the list after sending the request
+    // Update the state to reflect changes in the UI
     setState(() {
-      _userNames.remove(email);
-      _profilePics.remove(email);
+      _requestSents.remove(email);
+      _friendRequests.remove(email); // Remove from friend requests set
+      _friends.remove(email);
+      _blockedContacts.remove(email);
+      _blockedByContacts.remove(email);
+      _userNames.remove(email); // Remove from user names map
+      _profilePics.remove(email); // Remove from profile pics map
     });
   }
 
@@ -231,7 +189,9 @@ class _SearchPeoplePageState extends State<SearchPeoplePage> {
         ),
         iconTheme: const IconThemeData(color: Colors.black),
       ),
-      body: Column(
+      body: _isLoading
+          ? _buildShimmer()
+          : Column(
         children: [
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
@@ -328,6 +288,60 @@ class _SearchPeoplePageState extends State<SearchPeoplePage> {
         ],
       ),
       backgroundColor: Colors.white,
+    );
+  }
+
+  Widget _buildShimmer() {
+    return ListView.builder(
+      itemCount: 5, // Number of shimmer items to display
+      itemBuilder: (context, index) {
+        return Shimmer.fromColors(
+          baseColor: Colors.grey[300]!,
+          highlightColor: Colors.grey[100]!,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+            child: Row(
+              children: [
+                // Shimmering Profile Image
+                Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 16.0), // Spacing between avatar and text
+
+                // Shimmering Name and Button in the same row
+                Expanded(
+                  child: Row(
+                    children: [
+                      // Shimmering Name
+                      Expanded(
+                        child: Container(
+                          height: 16.0,
+                          color: Colors.grey[300],
+                        ),
+                      ),
+                      const SizedBox(width: 16.0),
+                      // Shimmering Button
+                      Container(
+                        width: 100.0,
+                        height: 40.0,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[300],
+                          borderRadius: BorderRadius.circular(8.0),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

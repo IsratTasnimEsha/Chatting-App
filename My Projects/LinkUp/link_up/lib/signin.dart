@@ -19,6 +19,24 @@ class _SignInPageState extends State<SignInPage> {
   bool _obscureText = true;
   bool _rememberMe = false;
 
+  void _showLoadingIndicator(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: false, // Prevents closing the dialog by tapping outside
+      builder: (BuildContext context) {
+        return Center(
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(color_1),
+          ),
+        );
+      },
+    );
+  }
+
+  void _hideLoadingIndicator(BuildContext context) {
+    Navigator.of(context).pop(); // Close the loading indicator
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -127,11 +145,15 @@ class _SignInPageState extends State<SignInPage> {
                     ),
                     onPressed: () async {
                       if (_formKey.currentState?.validate() ?? false) {
+                        _showLoadingIndicator(context); // Show loading indicator
+
                         try {
                           final UserCredential userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
                             email: _emailController.text.trim(),
                             password: _passwordController.text.trim(),
                           );
+                          _hideLoadingIndicator(context); // Hide loading indicator on success
+
                           // Successfully signed in
                           // Save email in SharedPreferences if "Remember me" is checked
                           final SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -146,6 +168,8 @@ class _SignInPageState extends State<SignInPage> {
                             ),
                           );
                         } on FirebaseAuthException catch (e) {
+                          _hideLoadingIndicator(context); // Hide loading indicator on error
+
                           String errorMessage;
 
                           if (e.code == 'user-not-found') {

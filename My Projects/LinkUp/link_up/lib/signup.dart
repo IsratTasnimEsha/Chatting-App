@@ -43,6 +43,24 @@ class _SignupPageState extends State<SignUpPage> {
     }
   }
 
+  void _showLoadingIndicator(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: false, // Prevents closing the dialog by tapping outside
+      builder: (BuildContext context) {
+        return Center(
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(color_1),
+          ),
+        );
+      },
+    );
+  }
+
+  void _hideLoadingIndicator(BuildContext context) {
+    Navigator.of(context).pop(); // Close the loading indicator
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -474,6 +492,7 @@ class _SignupPageState extends State<SignUpPage> {
                     ),
                     onPressed: () async {
                       if (_formKey.currentState?.validate() ?? false) {
+                        _showLoadingIndicator(context); // Show loading indicator
                         try {
                           final credential = await FirebaseAuth.instance
                               .createUserWithEmailAndPassword(

@@ -1,5 +1,6 @@
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
+import 'package:link_up/blocked_contacts.dart';
 import 'package:link_up/chats.dart';
 import 'package:link_up/friend_requests.dart';
 import 'package:link_up/requests_sent.dart';
@@ -9,7 +10,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'edit_profile.dart';
 import 'friends.dart';
 import 'reset_password.dart';
-import 'view_friend_profile.dart';
 
 const Color color_1 = Color(0xFF8ba16a);
 
@@ -149,12 +149,7 @@ class _HomePageState extends State<HomePage> {
               leading: const Icon(Icons.memory),
               title: const Text('Memories'),
               onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ViewFriendProfilePage(email: widget.email),
-                  ),
-                );
+
               },
             ),
             ListTile(
@@ -162,8 +157,12 @@ class _HomePageState extends State<HomePage> {
               title: const Text('Blocked Contacts'),
               onTap: () {
                 // Navigate to Blocked Persons page
-                Navigator.pop(context); // Close the drawer
-              },
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => BlockedContactsPage(email: widget.email),
+                  ),
+                );              },
             ),
             ListTile(
               leading: const Icon(Icons.password),

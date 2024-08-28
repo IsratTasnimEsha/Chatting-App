@@ -5,23 +5,23 @@ import 'package:shimmer/shimmer.dart';
 
 const Color color_1 = Color(0xFF8ba16a);
 
-class RequestsSentPage extends StatefulWidget {
+class BlockedContactsPage extends StatefulWidget {
   final String email;
 
-  const RequestsSentPage({Key? key, required this.email}) : super(key: key);
+  const BlockedContactsPage({Key? key, required this.email}) : super(key: key);
 
   @override
-  _RequestsSentPageState createState() => _RequestsSentPageState();
+  _BlockedContactsPageState createState() => _BlockedContactsPageState();
 }
 
-class _RequestsSentPageState extends State<RequestsSentPage> {
+class _BlockedContactsPageState extends State<BlockedContactsPage> {
   final DatabaseReference _usersRef = FirebaseDatabase.instance.ref('users');
   final FirebaseStorage _storage = FirebaseStorage.instance;
 
   Map<String, String> _userNames = {};
   Map<String, String?> _profilePics = {};
   Map<String, String> _requestKeys = {};
-  Set<String> _requestSents = {};
+  Set<String> _blockedContacts = {};
   String _searchQuery = '';
   bool _isLoading = true;
   int _totalRequests = 0;
@@ -35,33 +35,32 @@ class _RequestsSentPageState extends State<RequestsSentPage> {
   @override
   void dispose() {
     _usersRef.onValue.drain();
-    FirebaseDatabase.instance.ref("users/${widget.email}/request_sent").onValue.drain();
+    FirebaseDatabase.instance.ref("users/${widget.email}/blocked").onValue.drain();
     super.dispose();
   }
 
   void _initListeners() {
-    // Listener for 'request_sent' node to monitor changes
-    final requestSentRef = FirebaseDatabase.instance.ref("users/${widget.email}/request_sent");
-    requestSentRef.onValue.listen((event) {
+    final blockedContactsRef = FirebaseDatabase.instance.ref("users/${widget.email}/blocked");
+    blockedContactsRef.onValue.listen((event) {
       final snapshot = event.snapshot;
       if (snapshot.exists) {
         final requests = snapshot.children;
 
         setState(() {
-          _requestSents.clear();
+          _blockedContacts.clear();
           _requestKeys.clear();
           for (final request in requests) {
             final sentEmail = request.value.toString();
-            _requestSents.add(sentEmail);
+            _blockedContacts.add(sentEmail);
             _requestKeys[sentEmail] = _timeAgo(request.key.toString());
           }
-          _totalRequests = _requestSents.length;
+          _totalRequests = _blockedContacts.length;
         });
         _loadPeople(); // Reload people when request_sent list changes
       } else {
         // Clear the lists if no requests sent exist
         setState(() {
-          _requestSents.clear();
+          _blockedContacts.clear();
           _requestKeys.clear();
           _userNames.clear();
           _profilePics.clear();
@@ -81,7 +80,7 @@ class _RequestsSentPageState extends State<RequestsSentPage> {
 
         for (final person in people) {
           final email = person.key;
-          if (email != null && _requestSents.contains(email)) {
+          if (email != null && _blockedContacts.contains(email)) {
             final name = person.child('name').value.toString();
             final profilePicUrl = await _loadProfilePic(email);
 
@@ -110,7 +109,7 @@ class _RequestsSentPageState extends State<RequestsSentPage> {
 
         for (final person in people) {
           final email = person.key;
-          if (email != null && _requestSents.contains(email)) {
+          if (email != null && _blockedContacts.contains(email)) {
             final name = person.child('name').value.toString();
             final profilePicUrl = await _loadProfilePic(email);
 
@@ -122,7 +121,7 @@ class _RequestsSentPageState extends State<RequestsSentPage> {
         setState(() {
           _userNames = newUserNames;
           _profilePics = newProfilePics;
-          _totalRequests = _requestSents.length;
+          _totalRequests = _blockedContacts.length;
           _isLoading = false;
         });
       }
@@ -140,14 +139,14 @@ class _RequestsSentPageState extends State<RequestsSentPage> {
     }
   }
 
-  Future<void> _cancelRequest(String email) async {
+  Future<void> _unblockUser(String email) async {
     String e1 = email;
     String e2 = widget.email;
 
     final DatabaseReference ref1_1 =
-    FirebaseDatabase.instance.ref("users/$e2/request_sent/");
+    FirebaseDatabase.instance.ref("users/$e2/blocked/");
     final DatabaseReference ref1_2 =
-    FirebaseDatabase.instance.ref("users/$e1/friend_request/");
+    FirebaseDatabase.instance.ref("users/$e1/blockedBy/");
 
     // Retrieve the data for e2's request_sent
     DataSnapshot snapshot1 = await ref1_1.get();
@@ -189,23 +188,12 @@ class _RequestsSentPageState extends State<RequestsSentPage> {
 
     // Update the state to reflect changes in the UI
     setState(() {
-      _requestSents.remove(email); // Remove from friend requests set
+      _blockedContacts.remove(email); // Remove from friend requests set
       _userNames.remove(email); // Remove from user names map
       _profilePics.remove(email); // Remove from profile pics map
       _requestKeys.remove(email); // Remove the request key
-      _totalRequests = _requestSents.length; // Update total requests count
+      _totalRequests = _blockedContacts.length; // Update total requests count
     });
-  }
-
-  void _viewProfile(String email) {
-    Navigator.pushNamed(
-      context,
-      '/viewProfile',
-      arguments: {
-        'email': email,
-        'other_email': widget.email,
-      },
-    );
   }
 
   @override
@@ -218,7 +206,7 @@ class _RequestsSentPageState extends State<RequestsSentPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Requests Sent'),
+        title: const Text('Blocked Contacts'),
         backgroundColor: Colors.white,
       ),
       body: _isLoading
@@ -226,7 +214,7 @@ class _RequestsSentPageState extends State<RequestsSentPage> {
           : _totalRequests == 0
           ? Center(
         child: Text(
-          'No request sent',
+          'No blocked contacts',
           style: TextStyle(
             fontWeight: FontWeight.normal,
             color: Colors.grey[600],
@@ -287,7 +275,7 @@ class _RequestsSentPageState extends State<RequestsSentPage> {
             child: Align(
               alignment: Alignment.centerLeft, // Align text to the left
               child: Text(
-                'Total requests sent: $_totalRequests',
+                'Total blocked contacts: $_totalRequests',
                 style: const TextStyle(
                   fontWeight: FontWeight.normal,
                   color: Colors.grey,
@@ -339,7 +327,7 @@ class _RequestsSentPageState extends State<RequestsSentPage> {
                     trailing: SizedBox(
                       width: 110, // Adjust width as needed
                       child: ElevatedButton.icon(
-                        onPressed: () => _cancelRequest(email),
+                        onPressed: () => _unblockUser(email),
                         style: ElevatedButton.styleFrom(
                           primary: color_1,
                           onPrimary: Colors.white,
@@ -347,14 +335,13 @@ class _RequestsSentPageState extends State<RequestsSentPage> {
                             borderRadius: BorderRadius.circular(8.0),
                           ),
                         ),
-                        icon: const Icon(Icons.cancel, size: 16), // Adjust icon size
+                        icon: const Icon(Icons.remove_circle_outline, size: 16), // Adjust icon size
                         label: const Text(
-                          'Cancel',
+                          'Unblock',
                           style: TextStyle(fontSize: 14.0), // Adjust text size
                         ),
                       ),
                     ),
-                    onTap: () => _viewProfile(email),
                   ),
                 );
               },
