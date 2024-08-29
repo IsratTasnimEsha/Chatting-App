@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:link_up/user_message.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'firebase_options.dart';
 import 'signup.dart'; // Import your SignUpPage
@@ -71,6 +72,18 @@ class MyApp extends StatelessWidget {
           return MaterialPageRoute(
             builder: (context) {
               return ViewFriendProfilePage(
+                email: args['email']!,
+                other_email: args['other_email']!,
+              );
+            },
+          );
+        }
+        if (settings.name == '/userMessage') {
+          final args = settings.arguments as Map<String, String>;
+
+          return MaterialPageRoute(
+            builder: (context) {
+              return UserMessagePage(
                 email: args['email']!,
                 other_email: args['other_email']!,
               );

@@ -3,7 +3,32 @@ import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:link_up/view_friend_profile.dart';
 import 'package:photo_view/photo_view.dart';
+
+class FullScreenImagePage2 extends StatelessWidget {
+  final String imageUrl;
+
+  FullScreenImagePage2({required this.imageUrl});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: GestureDetector(
+        onTap: () {
+          Navigator.pop(context); // Go back when tapped
+        },
+        child: Center(
+          child: Image.network(
+            imageUrl,
+            fit: BoxFit.contain, // Show the image fully, without cropping
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 class FullScreenImagePage extends StatelessWidget {
   final List<XFile> images;
@@ -48,7 +73,8 @@ class FullScreenImagePage extends StatelessWidget {
                   child: ElevatedButton(
                     onPressed: () {
                       onSend();
-                      Navigator.pop(context); // Close full screen preview after sending
+                      Navigator.pop(
+                          context); // Close full screen preview after sending
                     },
                     child: Text('Send'),
                   ),
@@ -73,11 +99,14 @@ class UserMessagePage extends StatefulWidget {
 }
 
 class _UserMessagePageState extends State<UserMessagePage> {
-  final DatabaseReference _userRef = FirebaseDatabase.instance.reference().child('users');
+  final DatabaseReference _userRef =
+      FirebaseDatabase.instance.reference().child('users');
   final FirebaseStorage _storage = FirebaseStorage.instance;
   final TextEditingController _messageController = TextEditingController();
   final ImagePicker _picker = ImagePicker();
   final List<Map<String, dynamic>> _messages = []; // List to hold chat messages
+  final ScrollController _scrollController =
+      ScrollController(); // Scroll controller for ListView
 
   String _username = '';
   String _profilePicUrl = ''; // Initialize with an empty string
@@ -91,16 +120,58 @@ class _UserMessagePageState extends State<UserMessagePage> {
     _listenToMessages();
   }
 
+  @override
+  void dispose() {
+    _messageController.dispose();
+    _scrollController.dispose(); // Dispose the scroll controller
+    super.dispose();
+  }
+
   void _listenToMessages() {
     final chatRef = _userRef.child('${widget.email}/chat/${widget.other_email}');
+
     chatRef.onChildAdded.listen((event) {
-      final Map<String, dynamic> messageData = {
-        'id': event.snapshot.key,
-        'messages': event.snapshot.value,
-      };
+      final messageId = event.snapshot.key;
+      final messageData = event.snapshot.value;
+
       setState(() {
-        _messages.add(messageData);
+        _messages.add({
+          'id': messageId,
+          'messages': messageData,
+        });
+        _scrollToBottom();
       });
+    });
+
+    chatRef.onChildChanged.listen((event) {
+      final messageId = event.snapshot.key;
+      final messageData = event.snapshot.value;
+
+      setState(() {
+        final index = _messages.indexWhere((msg) => msg['id'] == messageId);
+        if (index != -1) {
+          _messages[index] = {
+            'id': messageId,
+            'messages': messageData,
+          };
+        }
+      });
+    });
+
+    chatRef.onChildRemoved.listen((event) {
+      final messageId = event.snapshot.key;
+
+      setState(() {
+        _messages.removeWhere((msg) => msg['id'] == messageId);
+      });
+    });
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+      }
     });
   }
 
@@ -116,7 +187,8 @@ class _UserMessagePageState extends State<UserMessagePage> {
     }
 
     // Fetch profile picture URL
-    final profilePicRef = _storage.ref().child('users/${widget.other_email}/profile_pic.png');
+    final profilePicRef =
+        _storage.ref().child('users/${widget.other_email}/profile_pic.png');
     try {
       final url = await profilePicRef.getDownloadURL();
       setState(() {
@@ -149,7 +221,8 @@ class _UserMessagePageState extends State<UserMessagePage> {
                   leading: Icon(Icons.camera_alt),
                   title: Text('Camera'),
                   onTap: () async {
-                    final pickedFile = await _picker.pickImage(source: ImageSource.camera);
+                    final pickedFile =
+                        await _picker.pickImage(source: ImageSource.camera);
                     Navigator.pop(context, pickedFile);
                   },
                 ),
@@ -157,7 +230,8 @@ class _UserMessagePageState extends State<UserMessagePage> {
                   leading: Icon(Icons.photo_album),
                   title: Text('Gallery'),
                   onTap: () async {
-                    final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
+                    final pickedFile =
+                        await _picker.pickImage(source: ImageSource.gallery);
                     Navigator.pop(context, pickedFile);
                   },
                 ),
@@ -196,8 +270,10 @@ class _UserMessagePageState extends State<UserMessagePage> {
     String currentTime = DateTime.now().millisecondsSinceEpoch.toString();
 
     // Reference paths for both users
-    final messageRef1 = _userRef.child('${widget.email}/chat/${widget.other_email}/$currentTime');
-    final messageRef2 = _userRef.child('${widget.other_email}/chat/${widget.email}/$currentTime');
+    final messageRef1 = _userRef
+        .child('${widget.email}/chat/${widget.other_email}/$currentTime');
+    final messageRef2 = _userRef
+        .child('${widget.other_email}/chat/${widget.email}/$currentTime');
 
     if (_messageController.text.isNotEmpty) {
       // Handle text message
@@ -210,19 +286,24 @@ class _UserMessagePageState extends State<UserMessagePage> {
     if (_selectedImages.isNotEmpty) {
       // Handle image messages
       for (var image in _selectedImages) {
-        final storageRef1 = _storage.ref().child('users/${widget.email}/chat/${widget.other_email}/$currentTime/${widget.email}.png');
-        final storageRef2 = _storage.ref().child('users/${widget.other_email}/chat/${widget.email}/$currentTime/${widget.email}.png');
+        final storageRef1 = _storage.ref().child(
+            'users/${widget.email}/chat/${widget.other_email}/$currentTime/${widget.email}/image.png');
+        final storageRef2 = _storage.ref().child(
+            'users/${widget.other_email}/chat/${widget.email}/$currentTime/${widget.email}/image.png');
 
         // Upload image
         try {
           final uploadTask1 = storageRef1.putFile(File(image.path));
           final uploadTask2 = storageRef2.putFile(File(image.path));
 
-          await Future.wait([uploadTask1, uploadTask2]); // Wait for both uploads to complete
+          await Future.wait(
+              [uploadTask1, uploadTask2]); // Wait for both uploads to complete
 
           // Save image messages in the database
-          await messageRef1.set({'${widget.email}': '**##firebase*@*storage##**'});
-          await messageRef2.set({'${widget.email}': '**##firebase*@*storage##**'});
+          await messageRef1
+              .set({'${widget.email}': '**##firebase*#@#*storage##**'});
+          await messageRef2
+              .set({'${widget.email}': '**##firebase*#@#*storage##**'});
         } catch (e) {
           // Handle upload errors
           print('Error uploading image: $e');
@@ -235,126 +316,389 @@ class _UserMessagePageState extends State<UserMessagePage> {
     }
   }
 
+  Future<String> _getImageUrl(
+      String firstValue, String secondValue, String thirdValue) async {
+    final storageRef = FirebaseStorage.instance.ref().child(
+        'users/${widget.email}/chat/${widget.other_email}/$firstValue/$secondValue/image.png');
+    return await storageRef.getDownloadURL();
+  }
+
+  // Add this method to handle deletion
+  Future<void> _deleteMessage(String messageId, bool deleteForEveryone) async {
+    final messageRef1 = _userRef.child('${widget.email}/chat/${widget.other_email}/$messageId');
+    final messageRef2 = _userRef.child('${widget.other_email}/chat/${widget.email}/$messageId');
+
+    try {
+      if (deleteForEveryone) {
+        await messageRef1.remove();
+        await messageRef2.set({'${widget.email}': '**##deleted*#@#*message##**'});
+      } else {
+        await messageRef1.remove();
+      }
+
+      // Remove the image if it exists
+      final storageRef1 = _storage.ref().child('users/${widget.email}/chat/${widget.other_email}/$messageId/${widget.email}/image.png');
+      final storageRef2 = _storage.ref().child('users/${widget.other_email}/chat/${widget.email}/$messageId/${widget.email}/image.png');
+
+      if (deleteForEveryone) {
+        await Future.wait([
+          storageRef1.delete(),
+          storageRef2.delete(),
+        ]);
+      } else {
+        await storageRef1.delete();
+      }
+
+      // Update local state
+      setState(() {
+        _messages.removeWhere((message) => message['id'] == messageId);
+      });
+    } catch (e) {
+      print('Error deleting message: $e');
+    }
+  }
+
+  void _editMessage(String messageId, String currentMessage) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        final TextEditingController _editController =
+        TextEditingController(text: currentMessage);
+
+        return AlertDialog(
+          title: Text('Edit Message'),
+          content: TextField(
+            controller: _editController,
+            decoration: InputDecoration(hintText: 'Edit your message'),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context); // Close the dialog
+              },
+              child: Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                final newMessage = _editController.text;
+                if (newMessage.isNotEmpty) {
+                  await _updateMessage(messageId, newMessage);
+                  Navigator.pop(context); // Close the dialog
+                }
+              },
+              child: Text('Save'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _updateMessage(String messageId, String newMessage) async {
+    final messageRef1 = _userRef
+        .child('${widget.email}/chat/${widget.other_email}/$messageId');
+    final messageRef2 = _userRef
+        .child('${widget.other_email}/chat/${widget.email}/$messageId');
+
+    try {
+      await messageRef1.update({
+        '${widget.email}': newMessage,
+        'edited': true, // Indicate that the message has been edited
+      });
+      await messageRef2.update({
+        '${widget.email}': newMessage,
+        'edited': true,
+      });
+    } catch (e) {
+      print('Error updating message: $e');
+    }
+  }
+
+  void _showDeleteOptions(String messageId, String secondValue, String currentMessage) {
+    final isCurrentUser = widget.email == secondValue;
+
+    showModalBottomSheet(
+      context: context,
+      builder: (BuildContext context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (isCurrentUser) // Show 'Delete for you' and 'Delete for everyone' options for the current user
+                ListTile(
+                  leading: Icon(Icons.delete),
+                  title: Text('Delete for you'),
+                  onTap: () {
+                    Navigator.pop(context); // Close the bottom sheet
+                    _deleteMessage(messageId, false);
+                  },
+                ),
+              if (isCurrentUser) // Show 'Delete for everyone' option for the current user
+                ListTile(
+                  leading: Icon(Icons.delete_forever),
+                  title: Text('Delete for everyone'),
+                  onTap: () {
+                    Navigator.pop(context); // Close the bottom sheet
+                    _deleteMessage(messageId, true);
+                  },
+                ),
+              if (isCurrentUser) // Show 'Edit Message' option for the current user
+                ListTile(
+                  leading: Icon(Icons.edit),
+                  title: Text('Edit Message'),
+                  onTap: () {
+                    Navigator.pop(context); // Close the bottom sheet
+                    _editMessage(messageId, currentMessage);
+                  },
+                ),
+              if (!isCurrentUser) // Show 'Delete for you' option for the other user
+                ListTile(
+                  leading: Icon(Icons.delete),
+                  title: Text('Delete for you'),
+                  onTap: () {
+                    Navigator.pop(context); // Close the bottom sheet
+                    _deleteMessage(messageId, false);
+                  },
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: Colors.white,
         title: Row(
           children: [
-            CircleAvatar(
-              backgroundImage: _profilePicUrl.isNotEmpty ? NetworkImage(_profilePicUrl) : null,
-              child: _profilePicUrl.isEmpty ? Icon(Icons.person) : null,
-            ),
-            SizedBox(width: 10),
-            Text(_username),
-          ],
-        ),
-      ),
-      body: Column(
-        children: [
-          Expanded(
-            child: ListView.builder(
-              itemCount: _messages.length,
-              itemBuilder: (context, index) {
-                final message = _messages[index];
-                final messageId = message['id'];
-                final messageData = message['messages'] as Map<dynamic, dynamic>?;
-
-                if (messageData == null) {
-                  return SizedBox.shrink();
-                }
-
-                bool isCurrentUserMessage = messageData.containsKey(widget.email);
-                bool isOtherUserMessage = messageData.containsKey(widget.other_email);
-
-                final timeString = DateTime.fromMillisecondsSinceEpoch(int.parse(messageId)).toLocal().toString();
-                final messageContent = isCurrentUserMessage
-                    ? messageData[widget.email] as String? ?? ''
-                    : messageData[widget.other_email] as String? ?? '';
-
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
-                  child: GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        _tappedCardIndex = _tappedCardIndex == index ? null : index;
-                      });
-                      print('Tapped index: $_tappedCardIndex'); // Debugging statement
-                    },
-                    child: Row(
-                      mainAxisAlignment: isCurrentUserMessage ? MainAxisAlignment.end : MainAxisAlignment.start,
-                      children: [
-                        // Display image on the left of the white card if it's the other user's message
-                        if (!isCurrentUserMessage)
-                          CircleAvatar(
-                            backgroundImage: _profilePicUrl.isNotEmpty ? NetworkImage(_profilePicUrl) : null,
-                          ),
-                        SizedBox(width: 8),
-                        // Display the message card
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: isCurrentUserMessage ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-                            children: [
-                              // Display timeString for tapped white cards and green cards
-                              if (_tappedCardIndex == index)
-                                Padding(
-                                  padding: const EdgeInsets.only(bottom: 4.0),
-                                  child: Text(
-                                    timeString,
-                                    style: TextStyle(fontSize: 12, color: Colors.grey),
-                                  ),
-                                ),
-                              Card(
-                                color: isCurrentUserMessage ? Colors.green : Colors.white,
-                                elevation: 4,
-                                child: Container(
-                                  padding: const EdgeInsets.all(8.0),
-                                  child: Text(
-                                    messageContent,
-                                    style: TextStyle(
-                                      color: isCurrentUserMessage ? Colors.white : Colors.black,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        if (isCurrentUserMessage) SizedBox(width: 8),
-                      ],
+            GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ViewFriendProfilePage(
+                      email: widget.other_email,
+                      other_email: widget.email,
                     ),
                   ),
                 );
               },
+              child: CircleAvatar(
+                backgroundImage: _profilePicUrl.isNotEmpty
+                    ? NetworkImage(_profilePicUrl)
+                    : null,
+                child: _profilePicUrl.isEmpty ? Icon(Icons.person) : null,
+              ),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Row(
-              children: [
-                IconButton(
-                  icon: Icon(Icons.camera_alt),
-                  onPressed: () => _pickImage(),
-                ),
-                Expanded(
-                  child: TextField(
-                    controller: _messageController,
-                    decoration: InputDecoration(
-                      hintText: 'Type a message',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12.0),
+            SizedBox(width: 10),
+            Expanded(child: Text(_username)),
+          ],
+        ),
+      ),
+      body: SafeArea(
+        child: Column(
+          children: [
+            Expanded(
+              child: ListView.builder(
+                controller: _scrollController,
+                itemCount: _messages.length,
+                itemBuilder: (context, index) {
+                  final message = _messages[index];
+                  final messageId = message['id'];
+                  final messageData = message['messages'] as Map<dynamic, dynamic>?;
+
+                  if (messageData == null) {
+                    return SizedBox.shrink();
+                  }
+
+                  bool isCurrentUserMessage = messageData.containsKey(widget.email);
+                  bool isOtherUserMessage = messageData.containsKey(widget.other_email);
+
+                  final timeString = DateTime.fromMillisecondsSinceEpoch(int.parse(messageId))
+                      .toLocal()
+                      .toString();
+
+                  final firstValue = messageId;
+                  final secondValue = isOtherUserMessage ? widget.other_email : widget.email;
+                  final thirdValue = messageData[secondValue] ?? '';
+                  final isEdited = messageData.containsKey('edited') && messageData['edited'] == true;
+
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
+                    child: GestureDetector(
+                      onLongPress: () {
+                        _showDeleteOptions(messageId, secondValue, thirdValue);
+                      },
+                      onTap: () {
+                        setState(() {
+                          _tappedCardIndex = _tappedCardIndex == index ? null : index;
+                        });
+                        print('Tapped index: $_tappedCardIndex');
+                      },
+                      child: Row(
+                        mainAxisAlignment: isCurrentUserMessage
+                            ? MainAxisAlignment.end
+                            : MainAxisAlignment.start,
+                        children: [
+                          if (!isCurrentUserMessage)
+                            CircleAvatar(
+                              backgroundImage: _profilePicUrl.isNotEmpty
+                                  ? NetworkImage(_profilePicUrl)
+                                  : null,
+                            ),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: isCurrentUserMessage
+                                  ? CrossAxisAlignment.end
+                                  : CrossAxisAlignment.start,
+                              children: [
+                                if (_tappedCardIndex == index)
+                                  Padding(
+                                    padding: const EdgeInsets.only(bottom: 4.0),
+                                    child: Text(
+                                      timeString,
+                                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                                    ),
+                                  ),
+                                if (thirdValue == '**##firebase*#@#*storage##**')
+                                  FutureBuilder<String>(
+                                    future: _getImageUrl(firstValue, secondValue, thirdValue),
+                                    builder: (context, snapshot) {
+                                      if (snapshot.connectionState == ConnectionState.waiting) {
+                                        return CircularProgressIndicator();
+                                      } else if (snapshot.hasError) {
+                                        return Text('Error loading image');
+                                      } else if (snapshot.hasData) {
+                                        return GestureDetector(
+                                          onTap: () {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (context) => FullScreenImagePage2(
+                                                  imageUrl: snapshot.data!,
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                          child: ClipRRect(
+                                            borderRadius: BorderRadius.circular(12.0),
+                                            child: Container(
+                                              height: 100,
+                                              width: 150,
+                                              decoration: BoxDecoration(
+                                                color: Colors.black,
+                                                borderRadius: BorderRadius.circular(12.0),
+                                                border: Border.all(color: Colors.grey, width: 1),
+                                              ),
+                                              child: Image.network(
+                                                snapshot.data!,
+                                                fit: BoxFit.cover,
+                                              ),
+                                            ),
+                                          ),
+                                        );
+                                      } else {
+                                        return SizedBox.shrink();
+                                      }
+                                    },
+                                  )
+                                else if (thirdValue == '**##deleted*#@#*message##**')
+                                  Card(
+                                    color: Colors.transparent,
+                                    elevation: 0,
+                                    child: Container(
+                                      padding: const EdgeInsets.all(8.0),
+                                      child: Text(
+                                        'This message was deleted',
+                                        style: TextStyle(
+                                          fontStyle: FontStyle.italic,
+                                          color: Colors.grey,
+                                        ),
+                                      ),
+                                    ),
+                                  )
+                                else
+                                  Card(
+                                    color: isCurrentUserMessage ? Colors.green : Colors.white,
+                                    elevation: 4,
+                                    child: ConstrainedBox(
+                                      constraints: BoxConstraints(
+                                        maxWidth: MediaQuery.of(context).size.width * 0.5,
+                                      ),
+                                      child: Container(
+                                        padding: const EdgeInsets.all(8.0),
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              thirdValue,
+                                              style: TextStyle(
+                                                color: isCurrentUserMessage ? Colors.white : Colors.black,
+                                              ),
+                                            ),
+                                            if (isEdited)
+                                              Align(
+                                                alignment: Alignment.bottomRight,
+                                                child: Padding(
+                                                  padding: const EdgeInsets.only(top: 4.0),
+                                                  child: Text(
+                                                    '(edited)',
+                                                    style: TextStyle(
+                                                      fontSize: 12,
+                                                      fontStyle: FontStyle.italic,
+                                                      color: secondValue == widget.email ? Colors.white : Colors.grey,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                          if (isCurrentUserMessage) SizedBox(width: 8),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: Icon(Icons.camera_alt),
+                    onPressed: () => _pickImage(),
+                  ),
+                  Expanded(
+                    child: TextField(
+                      controller: _messageController,
+                      decoration: InputDecoration(
+                        hintText: 'Type a message',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12.0),
+                        ),
                       ),
                     ),
                   ),
-                ),
-                IconButton(
-                  icon: Icon(Icons.send),
-                  onPressed: _sendMessage,
-                ),
-              ],
+                  IconButton(
+                    icon: Icon(Icons.send),
+                    onPressed: _sendMessage,
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

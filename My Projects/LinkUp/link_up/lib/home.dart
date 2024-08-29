@@ -57,7 +57,7 @@ class _HomePageState extends State<HomePage> {
 
     // Initialize _widgetOptions with the email passed from widget.email
     _widgetOptions = <Widget>[
-      const ChatsPage(),
+      ChatsPage(email: widget.email),
       FriendRequestsPage(email: widget.email),
       SearchPeoplePage(email: widget.email), // Use widget.email here
       const StoriesPage(),
