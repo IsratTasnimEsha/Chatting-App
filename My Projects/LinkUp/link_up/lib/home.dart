@@ -6,13 +6,12 @@ import 'package:link_up/friend_requests.dart';
 import 'package:link_up/requests_sent.dart';
 import 'package:link_up/search_people.dart';
 import 'package:link_up/stories.dart';
-import 'package:link_up/user_message.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'edit_profile.dart';
 import 'friends.dart';
 import 'reset_password.dart';
 
-const Color color_1 = Color(0xFF8ba16a);
+const Color color_1 = Colors.blue;
 
 class HomePage extends StatefulWidget {
   final String email;

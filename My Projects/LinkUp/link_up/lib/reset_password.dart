@@ -1,7 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
-const Color color_1 = Color(0xFF8ba16a);
+const Color color_1 = Colors.blue;
 
 class ResetPasswordPage extends StatefulWidget {
   final String email;

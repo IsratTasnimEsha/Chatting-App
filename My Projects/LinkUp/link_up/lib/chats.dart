@@ -3,7 +3,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
 
-const Color color_1 = Color(0xFF8ba16a);
+const Color color_1 = Colors.blue;
 
 class ChatsPage extends StatefulWidget {
   final String email;
@@ -14,12 +14,13 @@ class ChatsPage extends StatefulWidget {
   _ChatsPageState createState() => _ChatsPageState();
 }
 
-class _ChatsPageState extends State<ChatsPage> {
+class _ChatsPageState extends State<ChatsPage> with WidgetsBindingObserver {
   final DatabaseReference _usersRef = FirebaseDatabase.instance.ref('users');
   final FirebaseStorage _storage = FirebaseStorage.instance;
 
   Map<String, String> _userNames = {};
   Map<String, String?> _profilePics = {};
+  Map<String, String?> _activeStatuses = {};
   Set<String> _friends = {};
   String _searchQuery = '';
   bool _isLoading = true;
@@ -29,12 +30,38 @@ class _ChatsPageState extends State<ChatsPage> {
   void initState() {
     super.initState();
     _initListeners();
+    WidgetsBinding.instance.addObserver(this);
+    setStatus("Online");
+  }
+
+  void setStatus(String status) async {
+    final DatabaseReference ref = FirebaseDatabase.instance.ref("users/${widget.email}");
+    try {
+      await ref.update({
+        'activeStatus': status,
+      });
+    } catch (e) {
+      print('Error updating status: $e');
+    }
+
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // App is in the foreground, set status to online
+      setStatus('Online');
+    } else if (state == AppLifecycleState.paused) {
+      // App is in the background, set status to offline
+      setStatus('Offline');
+    }
   }
 
   @override
   void dispose() {
     _usersRef.onValue.drain();
     FirebaseDatabase.instance.ref("users/${widget.email}/chat").onValue.drain();
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
@@ -45,6 +72,7 @@ class _ChatsPageState extends State<ChatsPage> {
       if (snapshot.exists) {
         final Map<String, String> newUserNames = {};
         final Map<String, String?> newProfilePics = {};
+        final Map<String, String?> newActiveStatuses = {};
 
         _friends.clear();
 
@@ -54,19 +82,22 @@ class _ChatsPageState extends State<ChatsPage> {
           if (friendEmail != null) {
             _friends.add(friendEmail);
 
-            // Fetch the username
+            // Fetch the username, profile pic, and active status
             final userSnapshot = await _usersRef.child(friendEmail).get();
             final name = userSnapshot.child('name').value.toString();
             final profilePicUrl = await _loadProfilePic(friendEmail);
+            final status = userSnapshot.child('activeStatus').value?.toString();
 
             newUserNames[friendEmail] = name;
             newProfilePics[friendEmail] = profilePicUrl;
+            newActiveStatuses[friendEmail] = status;
           }
         }
 
         setState(() {
           _userNames = newUserNames;
           _profilePics = newProfilePics;
+          _activeStatuses = newActiveStatuses;
           _totalRequests = _friends.length;
           _isLoading = false;
         });
@@ -74,10 +105,39 @@ class _ChatsPageState extends State<ChatsPage> {
         setState(() {
           _userNames.clear();
           _profilePics.clear();
+          _activeStatuses.clear();
           _friends.clear();
           _totalRequests = 0;
           _isLoading = false;
         });
+      }
+    });
+
+    // Listen for user updates in real-time
+    _usersRef.onValue.listen((event) {
+      final snapshot = event.snapshot;
+      if (snapshot.exists) {
+        final Map<String, String> updatedUserNames = {};
+        final Map<String, String?> updatedProfilePics = {};
+        final Map<String, String?> updatedActiveStatuses = {};
+
+        for (final child in snapshot.children) {
+          final email = child.key;
+          if (email != null && _friends.contains(email)) {
+            final name = child.child('name').value.toString();
+            updatedUserNames[email] = name;
+            _loadProfilePic(email).then((url) {
+              updatedProfilePics[email] = url;
+              final status = child.child('activeStatus').value?.toString();
+              updatedActiveStatuses[email] = status;
+              setState(() {
+                _userNames = updatedUserNames;
+                _profilePics = updatedProfilePics;
+                _activeStatuses = updatedActiveStatuses;
+              });
+            });
+          }
+        }
       }
     });
   }
@@ -270,6 +330,7 @@ class _ChatsPageState extends State<ChatsPage> {
                 final email = filteredUserNames[index].key;
                 final name = filteredUserNames[index].value;
                 final profilePicUrl = _profilePics[email];
+                final status = _activeStatuses[email];
 
                 return GestureDetector(
                   onTap: () {
@@ -289,14 +350,30 @@ class _ChatsPageState extends State<ChatsPage> {
                       children: [
                         Container(
                           margin: const EdgeInsets.all(12.0),
-                          child: CircleAvatar(
-                            radius: 30,
-                            backgroundImage: profilePicUrl != null
-                                ? NetworkImage(profilePicUrl)
-                            as ImageProvider
-                                : const AssetImage(
-                                'assets/default_profile_pic.png'),
-                            backgroundColor: Colors.grey[300],
+                          child: Stack(
+                            children: [
+                              CircleAvatar(
+                                radius: 30,
+                                backgroundImage: profilePicUrl != null
+                                    ? NetworkImage(profilePicUrl)
+                                as ImageProvider
+                                    : const AssetImage(
+                                    'assets/default_profile_pic.png'),
+                                backgroundColor: Colors.grey[300],
+                              ),
+                              Positioned(
+                                bottom: 0,
+                                right: 0,
+                                child: Container(
+                                  width: 12,
+                                  height: 12,
+                                  decoration: BoxDecoration(
+                                    color: status == 'Online' ? Colors.green : Colors.grey,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                         Expanded(

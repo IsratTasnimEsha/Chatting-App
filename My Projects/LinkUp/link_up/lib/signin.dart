@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'home.dart';
 
-const Color color_1 = Color(0xFF8ba16a);
+const Color color_1 = Colors.blue;
 
 class SignInPage extends StatefulWidget {
   const SignInPage({super.key});
@@ -216,7 +216,7 @@ class _SignInPageState extends State<SignInPage> {
                           },
                           activeColor: color_1, // Color when checked
                           checkColor: Colors.white, // Color of the check mark
-                          side: BorderSide(color: color_1), // Border color
+                          side: BorderSide(color: Colors.black), // Border color
                           materialTapTargetSize: MaterialTapTargetSize.shrinkWrap, // Adjust tap target size
                         ),
                       ),
@@ -224,7 +224,7 @@ class _SignInPageState extends State<SignInPage> {
                         'Remember me',
                         style: TextStyle(
                           fontSize: 14, // Smaller font size
-                          color: color_1, // Custom text color
+                          color: Colors.black, // Custom text color
                         ),
                       ),
                     ],
@@ -303,7 +303,7 @@ class _SignInPageState extends State<SignInPage> {
                       },
                       child: const Text(
                         'Forgot password?',
-                        style: TextStyle(color: color_1),
+                        style: TextStyle(color: Colors.black, fontStyle: FontStyle.normal),
                       ),
                     ),
                   ),

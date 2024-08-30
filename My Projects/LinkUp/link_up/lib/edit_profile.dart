@@ -4,7 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:firebase_storage/firebase_storage.dart';
 
-const Color color_1 = Color(0xFF8ba16a);
+const Color color_1 = Colors.blue;
 const Color errorColor = Colors.red;
 
 class EditProfilePage extends StatefulWidget {

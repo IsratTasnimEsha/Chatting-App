@@ -11,7 +11,7 @@ import 'package:flutter/foundation.dart';
 const Color backgroundColor = Color(0xFFF5F5F5);
 const Color textColor = Color(0xFF212121);
 const Color subtitleColor = Color(0xFF757575);
-const Color color_1 = Color(0xFF8ba16a);
+const Color color_1 = Colors.blue;
 
 class ViewProfilePage extends StatefulWidget {
   final String email;

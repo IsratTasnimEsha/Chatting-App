@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter_downloader/flutter_downloader.dart';
 import 'package:link_up/user_message.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'firebase_options.dart';
@@ -9,16 +10,16 @@ import 'home.dart';
 import 'view_profile.dart';
 import 'view_friend_profile.dart';
 
-const Color color_1 = Color(0xFF8ba16a);
+const Color color_1 = Colors.blue;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  final SharedPreferences prefs = await SharedPreferences.getInstance();
-  final String? savedEmail = prefs.getString('rememberedEmail');
-
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  await FlutterDownloader.initialize();
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  final String? savedEmail = prefs.getString('rememberedEmail');
 
   runApp(MyApp(savedEmail: savedEmail));
 }
