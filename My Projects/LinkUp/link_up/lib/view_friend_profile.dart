@@ -13,7 +13,7 @@ import 'package:flutter/foundation.dart';
 const Color backgroundColor = Color(0xFFF5F5F5);
 const Color textColor = Color(0xFF212121);
 const Color subtitleColor = Color(0xFF757575);
-const Color color_1 = Colors.blue;
+Color color_1 = Colors.blue;
 
 class ViewFriendProfilePage extends StatefulWidget {
   final String email;
@@ -100,6 +100,29 @@ class _ViewFriendProfilePageState extends State<ViewFriendProfilePage> {
     _loadProfileImage();
     _listenToUserData();
     _listenToBlockStatus(); // Start listening for block status changes
+    _fetchUserColor(); // Fetch the color for other_email
+  }
+
+  void _fetchUserColor() {
+    DatabaseReference colorRef = FirebaseDatabase.instance
+        .ref('users/${widget.email}/appColor');
+
+    colorRef.onValue.listen((event) {
+      if (event.snapshot.exists) {
+        String colorValue = event.snapshot.value.toString();
+        setState(() {
+          color_1 = _getColorFromHex(colorValue); // Convert the color string to Color
+        });
+      }
+    });
+  }
+
+  Color _getColorFromHex(String hexColor) {
+    hexColor = hexColor.replaceAll("#", "");
+    if (hexColor.length == 6) {
+      hexColor = "FF$hexColor"; // Add alpha if not provided
+    }
+    return Color(int.parse(hexColor, radix: 16));
   }
 
   @override
@@ -381,7 +404,7 @@ class _ViewFriendProfilePageState extends State<ViewFriendProfilePage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
-                leading: const Icon(Icons.person_remove, color: color_1),
+                leading: Icon(Icons.person_remove, color: color_1),
                 title: const Text('Unfriend'),
                 onTap: () async {
                   // Implement Message functionality here
@@ -411,7 +434,7 @@ class _ViewFriendProfilePageState extends State<ViewFriendProfilePage> {
 
               ),
               ListTile(
-                leading: const Icon(Icons.block, color: color_1),
+                leading: Icon(Icons.block, color: color_1),
                 title: const Text('Block User'),
                 onTap: () async {
                   // Implement Call functionality here
@@ -525,7 +548,7 @@ class _ViewFriendProfilePageState extends State<ViewFriendProfilePage> {
                     ),
                     const SizedBox(width: 8),
                     IconButton(
-                      icon: const Icon(Icons.more_vert, color: color_1),
+                      icon: Icon(Icons.more_vert, color: color_1),
                       onPressed: () => _showBottomSheet(context),
                     ),
                   ],

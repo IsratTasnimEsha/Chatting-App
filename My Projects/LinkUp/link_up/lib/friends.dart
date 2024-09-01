@@ -3,7 +3,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
 
-const Color color_1 = Colors.blue;
+Color color_1 = Colors.blue;
 
 class FriendsPage extends StatefulWidget {
   final String email;
@@ -30,6 +30,29 @@ class _FriendsPageState extends State<FriendsPage> {
   void initState() {
     super.initState();
     _initListeners();
+    _fetchUserColor(); // Fetch the color for other_email
+  }
+
+  void _fetchUserColor() {
+    DatabaseReference colorRef = FirebaseDatabase.instance
+        .ref('users/${widget.email}/appColor');
+
+    colorRef.onValue.listen((event) {
+      if (event.snapshot.exists) {
+        String colorValue = event.snapshot.value.toString();
+        setState(() {
+          color_1 = _getColorFromHex(colorValue); // Convert the color string to Color
+        });
+      }
+    });
+  }
+
+  Color _getColorFromHex(String hexColor) {
+    hexColor = hexColor.replaceAll("#", "");
+    if (hexColor.length == 6) {
+      hexColor = "FF$hexColor"; // Add alpha if not provided
+    }
+    return Color(int.parse(hexColor, radix: 16));
   }
 
   @override
@@ -220,7 +243,7 @@ class _FriendsPageState extends State<FriendsPage> {
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(16.0),
-                          borderSide: const BorderSide(
+                          borderSide: BorderSide(
                               color: color_1,
                               width: 0.5), // Accent color when focused
                         ),
@@ -334,7 +357,7 @@ class _FriendsPageState extends State<FriendsPage> {
                   Container(
                     color: Colors.white
                         .withOpacity(0.8), // Slightly dim background
-                    child: const Center(
+                    child: Center(
                       child: CircularProgressIndicator(
                         color: color_1, // Use your primary color
                       ),

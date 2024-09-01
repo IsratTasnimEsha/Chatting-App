@@ -1,7 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 
-const Color color_1 = Colors.blue;
+Color color_1 = Colors.blue;
 
 class ResetPasswordPage extends StatefulWidget {
   final String email;
@@ -23,6 +24,34 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
 
   String formatEmailFromFirebase(String email) {
     return email.replaceAll('_dot_', '.').replaceAll('_at_', '@');
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchUserColor(); // Fetch the color for other_email
+  }
+
+  void _fetchUserColor() {
+    DatabaseReference colorRef = FirebaseDatabase.instance
+        .ref('users/${widget.email}/appColor');
+
+    colorRef.onValue.listen((event) {
+      if (event.snapshot.exists) {
+        String colorValue = event.snapshot.value.toString();
+        setState(() {
+          color_1 = _getColorFromHex(colorValue); // Convert the color string to Color
+        });
+      }
+    });
+  }
+
+  Color _getColorFromHex(String hexColor) {
+    hexColor = hexColor.replaceAll("#", "");
+    if (hexColor.length == 6) {
+      hexColor = "FF$hexColor"; // Add alpha if not provided
+    }
+    return Color(int.parse(hexColor, radix: 16));
   }
 
   Future<void> _resetPassword() async {

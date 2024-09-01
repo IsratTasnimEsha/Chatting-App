@@ -1,125 +1,17 @@
 import 'dart:io';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:link_up/view_friend_profile.dart';
 import 'package:link_up/view_profile.dart';
-import 'package:photo_view/photo_view.dart';
 import 'package:flutter/services.dart';
+import 'document_type.dart';
+import 'document_viewer.dart';
+import 'full_screen_image.dart';
 
-import 'package:flutter/material.dart';
-import 'package:flutter_downloader/flutter_downloader.dart';
-
-const Color color_1 = Colors.blue;
-
-class FullScreenImagePage2 extends StatelessWidget {
-  final String imageUrl;
-
-  FullScreenImagePage2({required this.imageUrl});
-
-  Future<void> _downloadImage() async {
-    int timestamp = DateTime.now().millisecondsSinceEpoch;
-    String formattedTime = timestamp.toString();
-
-    final taskId = await FlutterDownloader.enqueue(
-      url: imageUrl,
-      savedDir: '/storage/emulated/0/Download', // or use a different directory
-      fileName: '${formattedTime}.png',
-      showNotification: true,
-      openFileFromNotification: true,
-    );
-    print('Download task id: $taskId');
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: Stack(
-        children: [
-          GestureDetector(
-            onTap: () {
-              Navigator.pop(context); // Go back when tapped
-            },
-            child: Center(
-              child: Image.network(
-                imageUrl,
-                fit: BoxFit.contain,
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: 20,
-            right: 20,
-            child: FloatingActionButton(
-              onPressed: _downloadImage,
-              child: Icon(Icons.download),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class FullScreenImagePage extends StatelessWidget {
-  final List<XFile> images;
-  final VoidCallback onSend;
-  final VoidCallback onAddMore;
-
-  FullScreenImagePage({
-    required this.images,
-    required this.onSend,
-    required this.onAddMore,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Preview'),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.add_photo_alternate),
-            onPressed: onAddMore,
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          Expanded(
-            child: PageView.builder(
-              itemCount: images.length,
-              itemBuilder: (context, index) {
-                return PhotoView(
-                  imageProvider: FileImage(File(images[index].path)),
-                );
-              },
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () {
-                      onSend();
-                      Navigator.pop(
-                          context); // Close full screen preview after sending
-                    },
-                    child: Text('Send'),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
+Color color_1 = Colors.blue;
 
 class UserMessagePage extends StatefulWidget {
   final String email;
@@ -133,13 +25,13 @@ class UserMessagePage extends StatefulWidget {
 
 class _UserMessagePageState extends State<UserMessagePage> {
   final DatabaseReference _userRef =
-  FirebaseDatabase.instance.reference().child('users');
+      FirebaseDatabase.instance.reference().child('users');
   final FirebaseStorage _storage = FirebaseStorage.instance;
   final TextEditingController _messageController = TextEditingController();
   final ImagePicker _picker = ImagePicker();
   final List<Map<String, dynamic>> _messages = []; // List to hold chat messages
   final ScrollController _scrollController =
-  ScrollController(); // Scroll controller for ListView
+      ScrollController(); // Scroll controller for ListView
 
   String _username = '';
   String _status = '';
@@ -156,6 +48,29 @@ class _UserMessagePageState extends State<UserMessagePage> {
     _listenToMessages();
     _checkFriendStatus();
     _checkBlockStatus();
+    _fetchUserColor(); // Fetch the color for other_email
+  }
+
+  void _fetchUserColor() {
+    DatabaseReference colorRef = FirebaseDatabase.instance
+        .ref('users/${widget.email}/chatColor/${widget.other_email}');
+
+    colorRef.onValue.listen((event) {
+      final data = event.snapshot.value;
+      if (data != null) {
+        setState(() {
+          color_1 = _getColorFromHex(data.toString()) as Color;
+        });
+      }
+    });
+  }
+
+  Color _getColorFromHex(String hexColor) {
+    hexColor = hexColor.replaceAll("#", "");
+    if (hexColor.length == 6) {
+      hexColor = "FF$hexColor"; // Add alpha if not provided
+    }
+    return Color(int.parse(hexColor, radix: 16));
   }
 
   Future<void> _checkFriendStatus() async {
@@ -178,7 +93,8 @@ class _UserMessagePageState extends State<UserMessagePage> {
     try {
       final friendsSnapshot = await userRef.get();
       if (friendsSnapshot.exists) {
-        final friendsList = Map<dynamic, dynamic>.from(friendsSnapshot.value as Map);
+        final friendsList =
+            Map<dynamic, dynamic>.from(friendsSnapshot.value as Map);
         return friendsList.containsValue(otherEmail);
       }
     } catch (e) {
@@ -194,7 +110,8 @@ class _UserMessagePageState extends State<UserMessagePage> {
     try {
       final blockSnapshot = await userRef1.get();
       if (blockSnapshot.exists) {
-        final blockList = Map<dynamic, dynamic>.from(blockSnapshot.value as Map);
+        final blockList =
+            Map<dynamic, dynamic>.from(blockSnapshot.value as Map);
         return blockList.containsValue(otherEmail);
       }
     } catch (e) {
@@ -206,7 +123,8 @@ class _UserMessagePageState extends State<UserMessagePage> {
     try {
       final blockSnapshot = await userRef2.get();
       if (blockSnapshot.exists) {
-        final blockList = Map<dynamic, dynamic>.from(blockSnapshot.value as Map);
+        final blockList =
+            Map<dynamic, dynamic>.from(blockSnapshot.value as Map);
         return blockList.containsValue(otherEmail);
       }
     } catch (e) {
@@ -224,7 +142,8 @@ class _UserMessagePageState extends State<UserMessagePage> {
   }
 
   void _listenToMessages() {
-    final chatRef = _userRef.child('${widget.email}/chat/${widget.other_email}');
+    final chatRef =
+        _userRef.child('${widget.email}/chat/${widget.other_email}');
 
     chatRef.onChildAdded.listen((event) {
       final messageId = event.snapshot.key;
@@ -294,7 +213,8 @@ class _UserMessagePageState extends State<UserMessagePage> {
     });
 
     // Fetch and listen for profile picture URL
-    final profilePicRef = _storage.ref().child('users/${widget.other_email}/profile_pic.png');
+    final profilePicRef =
+        _storage.ref().child('users/${widget.other_email}/profile_pic.png');
     profilePicRef.getDownloadURL().then((url) {
       setState(() {
         _profilePicUrl = url;
@@ -326,7 +246,7 @@ class _UserMessagePageState extends State<UserMessagePage> {
                   title: Text('Camera'),
                   onTap: () async {
                     final pickedFile =
-                    await _picker.pickImage(source: ImageSource.camera);
+                        await _picker.pickImage(source: ImageSource.camera);
                     Navigator.pop(context, pickedFile);
                   },
                 ),
@@ -335,7 +255,7 @@ class _UserMessagePageState extends State<UserMessagePage> {
                   title: Text('Gallery'),
                   onTap: () async {
                     final pickedFile =
-                    await _picker.pickImage(source: ImageSource.gallery);
+                        await _picker.pickImage(source: ImageSource.gallery);
                     Navigator.pop(context, pickedFile);
                   },
                 ),
@@ -405,9 +325,9 @@ class _UserMessagePageState extends State<UserMessagePage> {
 
           // Save image messages in the database
           await messageRef1
-              .set({'${widget.email}': '**##firebase*#@#*storage##**'});
+              .set({'${widget.email}': '**##image*#@#*storage##**'});
           await messageRef2
-              .set({'${widget.email}': '**##firebase*#@#*storage##**'});
+              .set({'${widget.email}': '**##image*#@#*storage##**'});
         } catch (e) {
           // Handle upload errors
           print('Error uploading image: $e');
@@ -416,33 +336,82 @@ class _UserMessagePageState extends State<UserMessagePage> {
       setState(() {
         _selectedImages.clear(); // Clear selected images after sending
       });
-      Navigator.pop(context); // Close full screen preview
+    }
+
+    if (_selectedDocument != null) {
+      // Handle document message
+      final storageRef1 = _storage.ref().child(
+          'users/${widget.email}/chat/${widget.other_email}/$currentTime/${widget.email}/${_selectedDocument!.path.split('/').last}');
+      final storageRef2 = _storage.ref().child(
+          'users/${widget.other_email}/chat/${widget.email}/$currentTime/${widget.email}/${_selectedDocument!.path.split('/').last}');
+
+      try {
+        final uploadTask1 = storageRef1.putFile(_selectedDocument!);
+        final uploadTask2 = storageRef2.putFile(_selectedDocument!);
+
+        await Future.wait(
+            [uploadTask1, uploadTask2]); // Wait for both uploads to complete
+
+        // Save document message in the database
+        await messageRef1
+            .set({'${widget.email}': '**##document*#@#*storage##**'});
+        await messageRef2
+            .set({'${widget.email}': '**##document*#@#*storage##**'});
+      } catch (e) {
+        // Handle upload errors
+        print('Error uploading document: $e');
+      }
+      setState(() {
+        _selectedDocument = null; // Clear selected document after sending
+      });
     }
   }
 
-  Future<String> _getImageUrl(
-      String firstValue, String secondValue, String thirdValue) async {
+  Future<String> _getImageUrl(String firstValue, String secondValue) async {
     final storageRef = FirebaseStorage.instance.ref().child(
         'users/${widget.email}/chat/${widget.other_email}/$firstValue/$secondValue/image.png');
     return await storageRef.getDownloadURL();
   }
 
+  Future<String> _getDocumentUrl(String firstValue, String secondValue) async {
+    // Construct the storage reference to the directory
+    final storageRef = FirebaseStorage.instance.ref().child(
+        'users/${widget.email}/chat/${widget.other_email}/$firstValue/$secondValue');
+
+    // List all files in the directory
+    final ListResult result = await storageRef.listAll();
+
+    // If there are any items in the directory, get the first item's download URL
+    if (result.items.isNotEmpty) {
+      final Reference firstFile = result.items.first;
+      return await firstFile.getDownloadURL();
+    } else {
+      throw Exception('No document found in the specified directory');
+    }
+  }
+
   // Add this method to handle deletion
   Future<void> _deleteMessage(String messageId, bool deleteForEveryone) async {
-    final messageRef1 = _userRef.child('${widget.email}/chat/${widget.other_email}/$messageId');
-    final messageRef2 = _userRef.child('${widget.other_email}/chat/${widget.email}/$messageId');
+    final messageRef1 =
+        _userRef.child('${widget.email}/chat/${widget.other_email}/$messageId');
+    final messageRef2 =
+        _userRef.child('${widget.other_email}/chat/${widget.email}/$messageId');
 
     try {
       if (deleteForEveryone) {
-        await messageRef1.set({'${widget.email}': '**##deleted*#@#*message##**'});
-        await messageRef2.set({'${widget.email}': '**##deleted*#@#*message##**'});
+        await messageRef1
+            .set({'${widget.email}': '**##deleted*#@#*message##**'});
+        await messageRef2
+            .set({'${widget.email}': '**##deleted*#@#*message##**'});
       } else {
         await messageRef1.remove();
       }
 
       // Remove the image if it exists
-      final storageRef1 = _storage.ref().child('users/${widget.email}/chat/${widget.other_email}/$messageId/${widget.email}/image.png');
-      final storageRef2 = _storage.ref().child('users/${widget.other_email}/chat/${widget.email}/$messageId/${widget.email}/image.png');
+      final storageRef1 = _storage.ref().child(
+          'users/${widget.email}/chat/${widget.other_email}/$messageId/${widget.email}/image.png');
+      final storageRef2 = _storage.ref().child(
+          'users/${widget.other_email}/chat/${widget.email}/$messageId/${widget.email}/image.png');
 
       if (deleteForEveryone) {
         await Future.wait([
@@ -467,7 +436,7 @@ class _UserMessagePageState extends State<UserMessagePage> {
       context: context,
       builder: (BuildContext context) {
         final TextEditingController _editController =
-        TextEditingController(text: currentMessage);
+            TextEditingController(text: currentMessage);
 
         return AlertDialog(
           title: Text('Edit Message'),
@@ -509,10 +478,10 @@ class _UserMessagePageState extends State<UserMessagePage> {
   }
 
   Future<void> _updateMessage(String messageId, String newMessage) async {
-    final messageRef1 = _userRef
-        .child('${widget.email}/chat/${widget.other_email}/$messageId');
-    final messageRef2 = _userRef
-        .child('${widget.other_email}/chat/${widget.email}/$messageId');
+    final messageRef1 =
+        _userRef.child('${widget.email}/chat/${widget.other_email}/$messageId');
+    final messageRef2 =
+        _userRef.child('${widget.other_email}/chat/${widget.email}/$messageId');
 
     try {
       await messageRef1.update({
@@ -528,7 +497,8 @@ class _UserMessagePageState extends State<UserMessagePage> {
     }
   }
 
-  void _showDeleteOptions(String messageId, String secondValue, String currentMessage) {
+  void _showDeleteOptions(
+      String messageId, String secondValue, String currentMessage) {
     final isCurrentUser = widget.email == secondValue;
 
     showModalBottomSheet(
@@ -538,7 +508,8 @@ class _UserMessagePageState extends State<UserMessagePage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (currentMessage != '**##firebase*#@#*storage##**')
+              if (currentMessage != '**##image*#@#*storage##**' &&
+                  currentMessage != '**##document*#@#*storage##**')
                 ListTile(
                   leading: Icon(Icons.copy),
                   title: Text('Copy Text'),
@@ -547,7 +518,10 @@ class _UserMessagePageState extends State<UserMessagePage> {
                     _copyText(messageId, currentMessage);
                   },
                 ),
-              if (isCurrentUser && currentMessage != '**##firebase*#@#*storage##**') // Show 'Edit Message' option for the current user
+              if (isCurrentUser &&
+                  currentMessage != '**##image*#@#*storage##**' &&
+                  currentMessage !=
+                      '**##document*#@#*storage##**') // Show 'Edit Message' option for the current user
                 ListTile(
                   leading: Icon(Icons.edit),
                   title: Text('Edit Message'),
@@ -617,6 +591,85 @@ class _UserMessagePageState extends State<UserMessagePage> {
     }
   }
 
+  File? _selectedDocument; // Variable to store the selected document
+
+  void _pickDocument() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'],
+    );
+
+    if (result != null) {
+      setState(() {
+        _selectedDocument =
+            File(result.files.single.path!); // Store the selected document
+      });
+    }
+  }
+
+  String _decodeFileName(String url) {
+    // Extract the file name from the URL
+    final uri = Uri.parse(url);
+    final pathSegments = uri.pathSegments;
+    return pathSegments.isNotEmpty ? pathSegments.last : 'Unknown Document';
+  }
+
+  Widget _buildDocumentWidget(String fileUrl, bool isCurrentUser) {
+    final fileName = _decodeFileName(fileUrl);
+    final documentType = getDocumentType(fileName);
+
+    return GestureDetector(
+      onTap: () {
+        // Handle document tap (e.g., navigate to a document viewer or download)
+      },
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12.0),
+        child: Container(
+          height: 60,
+          width: 150,
+          decoration: BoxDecoration(
+            color: isCurrentUser ? color_1 : Colors.white,
+            borderRadius: BorderRadius.circular(12.0),
+            border: Border.all(color: Colors.grey, width: 1),
+          ),
+          child: Container(
+            padding:
+                const EdgeInsets.symmetric(vertical: 8.0, horizontal: 12.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  documentType.icon,
+                  color: isCurrentUser
+                      ? Colors.white
+                      : color_1, // Set the icon color
+                ),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    documentType.type,
+                    style: TextStyle(
+                      color: isCurrentUser
+                          ? Colors.white
+                          : color_1, // Set color based on isCurrentUser
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  DocumentType getDocumentType(String fileName) {
+    final extension = fileName.split('.').last.toLowerCase();
+    return documentTypes[extension] ??
+        DocumentType('Unknown Document', Icons.insert_drive_file);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -625,11 +678,15 @@ class _UserMessagePageState extends State<UserMessagePage> {
         title: Row(
           children: [
             // First column: Profile picture
-            CircleAvatar(
-              backgroundImage: _profilePicUrl.isNotEmpty
-                  ? NetworkImage(_profilePicUrl)
-                  : null,
-              child: _profilePicUrl.isEmpty ? Icon(Icons.person) : null,
+            GestureDetector(
+              onTap: () => _buildProfilePage(),
+              // Call the function when the CircleAvatar is tapped
+              child: CircleAvatar(
+                backgroundImage: _profilePicUrl.isNotEmpty
+                    ? NetworkImage(_profilePicUrl)
+                    : null,
+                child: _profilePicUrl.isEmpty ? Icon(Icons.person) : null,
+              ),
             ),
             SizedBox(width: 10),
             // Second column: Username and status
@@ -644,7 +701,10 @@ class _UserMessagePageState extends State<UserMessagePage> {
                   SizedBox(height: 2), // Space between username and status
                   Text(
                     _status,
-                    style: TextStyle(fontWeight: FontWeight.normal, fontSize: 12, color: Colors.grey),
+                    style: TextStyle(
+                        fontWeight: FontWeight.normal,
+                        fontSize: 12,
+                        color: Colors.grey),
                   ),
                 ],
               ),
@@ -662,33 +722,41 @@ class _UserMessagePageState extends State<UserMessagePage> {
                 itemBuilder: (context, index) {
                   final message = _messages[index];
                   final messageId = message['id'];
-                  final messageData = message['messages'] as Map<dynamic, dynamic>?;
+                  final messageData =
+                      message['messages'] as Map<dynamic, dynamic>?;
 
                   if (messageData == null) {
                     return SizedBox.shrink();
                   }
 
-                  bool isCurrentUserMessage = messageData.containsKey(widget.email);
-                  bool isOtherUserMessage = messageData.containsKey(widget.other_email);
+                  bool isCurrentUserMessage =
+                      messageData.containsKey(widget.email);
+                  bool isOtherUserMessage =
+                      messageData.containsKey(widget.other_email);
 
-                  final timeString = DateTime.fromMillisecondsSinceEpoch(int.parse(messageId))
-                      .toLocal()
-                      .toString();
+                  final timeString =
+                      DateTime.fromMillisecondsSinceEpoch(int.parse(messageId))
+                          .toLocal()
+                          .toString();
 
                   final firstValue = messageId;
-                  final secondValue = isOtherUserMessage ? widget.other_email : widget.email;
+                  final secondValue =
+                      isOtherUserMessage ? widget.other_email : widget.email;
                   final thirdValue = messageData[secondValue] ?? '';
-                  final isEdited = messageData.containsKey('edited') && messageData['edited'] == true;
+                  final isEdited = messageData.containsKey('edited') &&
+                      messageData['edited'] == true;
 
                   return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
+                    padding: const EdgeInsets.symmetric(
+                        vertical: 4.0, horizontal: 8.0),
                     child: GestureDetector(
                       onLongPress: () {
                         _showDeleteOptions(messageId, secondValue, thirdValue);
                       },
                       onTap: () {
                         setState(() {
-                          _tappedCardIndex = _tappedCardIndex == index ? null : index;
+                          _tappedCardIndex =
+                              _tappedCardIndex == index ? null : index;
                         });
                         print('Tapped index: $_tappedCardIndex');
                       },
@@ -715,14 +783,17 @@ class _UserMessagePageState extends State<UserMessagePage> {
                                     padding: const EdgeInsets.only(bottom: 4.0),
                                     child: Text(
                                       timeString,
-                                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                                      style: TextStyle(
+                                          fontSize: 12, color: Colors.grey),
                                     ),
                                   ),
-                                if (thirdValue == '**##firebase*#@#*storage##**')
+                                if (thirdValue == '**##image*#@#*storage##**')
                                   FutureBuilder<String>(
-                                    future: _getImageUrl(firstValue, secondValue, thirdValue),
+                                    future:
+                                        _getImageUrl(firstValue, secondValue),
                                     builder: (context, snapshot) {
-                                      if (snapshot.connectionState == ConnectionState.waiting) {
+                                      if (snapshot.connectionState ==
+                                          ConnectionState.waiting) {
                                         return CircularProgressIndicator();
                                       } else if (snapshot.hasError) {
                                         return Text('Error loading image');
@@ -732,21 +803,26 @@ class _UserMessagePageState extends State<UserMessagePage> {
                                             Navigator.push(
                                               context,
                                               MaterialPageRoute(
-                                                builder: (context) => FullScreenImagePage2(
+                                                builder: (context) =>
+                                                    FullScreenImagePage2(
                                                   imageUrl: snapshot.data!,
                                                 ),
                                               ),
                                             );
                                           },
                                           child: ClipRRect(
-                                            borderRadius: BorderRadius.circular(12.0),
+                                            borderRadius:
+                                                BorderRadius.circular(12.0),
                                             child: Container(
                                               height: 100,
                                               width: 150,
                                               decoration: BoxDecoration(
                                                 color: Colors.black,
-                                                borderRadius: BorderRadius.circular(12.0),
-                                                border: Border.all(color: Colors.grey, width: 1),
+                                                borderRadius:
+                                                    BorderRadius.circular(12.0),
+                                                border: Border.all(
+                                                    color: Colors.grey,
+                                                    width: 1),
                                               ),
                                               child: Image.network(
                                                 snapshot.data!,
@@ -760,7 +836,29 @@ class _UserMessagePageState extends State<UserMessagePage> {
                                       }
                                     },
                                   )
-                                else if (thirdValue == '**##deleted*#@#*message##**')
+                                else if (thirdValue ==
+                                    '**##document*#@#*storage##**')
+                                  FutureBuilder<String>(
+                                    future: _getDocumentUrl(
+                                        firstValue, secondValue),
+                                    builder: (context, snapshot) {
+                                      if (snapshot.connectionState ==
+                                          ConnectionState.waiting) {
+                                        return CircularProgressIndicator();
+                                      } else if (snapshot.hasError) {
+                                        return Text('Error loading document');
+                                      } else if (snapshot.hasData) {
+                                        return _buildDocumentWidget(
+                                          snapshot.data!,
+                                          secondValue == widget.email,
+                                        );
+                                      } else {
+                                        return SizedBox.shrink();
+                                      }
+                                    },
+                                  )
+                                else if (thirdValue ==
+                                    '**##deleted*#@#*message##**')
                                   Card(
                                     color: Colors.transparent,
                                     elevation: 0,
@@ -777,34 +875,48 @@ class _UserMessagePageState extends State<UserMessagePage> {
                                   )
                                 else
                                   Card(
-                                    color: isCurrentUserMessage ? color_1 : Colors.white,
+                                    color: isCurrentUserMessage
+                                        ? color_1
+                                        : Colors.white,
                                     elevation: 4,
                                     child: ConstrainedBox(
                                       constraints: BoxConstraints(
-                                        maxWidth: MediaQuery.of(context).size.width * 0.5,
+                                        maxWidth:
+                                            MediaQuery.of(context).size.width *
+                                                0.5,
                                       ),
                                       child: Container(
                                         padding: const EdgeInsets.all(8.0),
                                         child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           children: [
                                             Text(
                                               thirdValue,
                                               style: TextStyle(
-                                                color: isCurrentUserMessage ? Colors.white : Colors.black,
+                                                color: isCurrentUserMessage
+                                                    ? Colors.white
+                                                    : Colors.black,
                                               ),
                                             ),
                                             if (isEdited)
                                               Align(
-                                                alignment: Alignment.bottomRight,
+                                                alignment:
+                                                    Alignment.bottomRight,
                                                 child: Padding(
-                                                  padding: const EdgeInsets.only(top: 4.0),
+                                                  padding:
+                                                      const EdgeInsets.only(
+                                                          top: 4.0),
                                                   child: Text(
                                                     '(edited)',
                                                     style: TextStyle(
                                                       fontSize: 12,
-                                                      fontStyle: FontStyle.italic,
-                                                      color: secondValue == widget.email ? Colors.white : Colors.grey,
+                                                      fontStyle:
+                                                          FontStyle.italic,
+                                                      color: secondValue ==
+                                                              widget.email
+                                                          ? Colors.white
+                                                          : Colors.grey,
                                                     ),
                                                   ),
                                                 ),
@@ -825,11 +937,40 @@ class _UserMessagePageState extends State<UserMessagePage> {
                 },
               ),
             ),
+            if (_selectedDocument != null)
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(vertical: 4.0, horizontal: 20),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        _selectedDocument!.path.split('/').last,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.clear),
+                      onPressed: () {
+                        setState(() {
+                          _selectedDocument =
+                              null; // Remove the selected document
+                        });
+                      },
+                    ),
+                  ],
+                ),
+              ),
             if (_isFriend) // Show the bottom navigation bar only if the user is a friend
               Padding(
                 padding: const EdgeInsets.all(8.0),
                 child: Row(
                   children: [
+                    IconButton(
+                      icon: Icon(Icons.attach_file), // Document icon
+                      onPressed: () =>
+                          _pickDocument(), // Pick document when icon is pressed
+                    ),
                     IconButton(
                       icon: Icon(Icons.camera_alt),
                       onPressed: () => _pickImage(),
@@ -837,6 +978,7 @@ class _UserMessagePageState extends State<UserMessagePage> {
                     Expanded(
                       child: TextField(
                         controller: _messageController,
+                        cursorColor: Colors.black, // Set the cursor color here
                         decoration: InputDecoration(
                           hintText: 'Type a message',
                           border: OutlineInputBorder(

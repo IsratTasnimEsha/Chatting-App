@@ -1,3 +1,4 @@
+import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:link_up/blocked_contacts.dart';
@@ -7,11 +8,12 @@ import 'package:link_up/requests_sent.dart';
 import 'package:link_up/search_people.dart';
 import 'package:link_up/stories.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'color_mode.dart';
 import 'edit_profile.dart';
 import 'friends.dart';
 import 'reset_password.dart';
 
-const Color color_1 = Colors.blue;
+Color color_1 = Colors.blue;
 
 class HomePage extends StatefulWidget {
   final String email;
@@ -29,10 +31,12 @@ class _HomePageState extends State<HomePage> {
   Future<void> _loadProfileImage() async {
     try {
       // Construct the path to the user's profile image in Firebase Storage
-      String filePath = 'users/${widget.email}/profile_pic.png';  // Ensure correct file extension if any
+      String filePath =
+          'users/${widget.email}/profile_pic.png'; // Ensure correct file extension if any
 
       // Retrieve the download URL
-      String downloadUrl = await FirebaseStorage.instance.ref(filePath).getDownloadURL();
+      String downloadUrl =
+          await FirebaseStorage.instance.ref(filePath).getDownloadURL();
 
       // Update the state with the profile image URL
       setState(() {
@@ -42,7 +46,8 @@ class _HomePageState extends State<HomePage> {
       // Handle any errors (e.g., file not found, permission issues)
       print('Failed to load profile image: $e');
       setState(() {
-        _profileImageUrl = null;  // Set to null to handle cases where the image fails to load
+        _profileImageUrl =
+            null; // Set to null to handle cases where the image fails to load
       });
     }
   }
@@ -53,6 +58,7 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     _loadProfileImage();
+    _fetchUserColor();
 
     // Initialize _widgetOptions with the email passed from widget.email
     _widgetOptions = <Widget>[
@@ -61,6 +67,29 @@ class _HomePageState extends State<HomePage> {
       SearchPeoplePage(email: widget.email), // Use widget.email here
       const StoriesPage(),
     ];
+  }
+
+  void _fetchUserColor() {
+    DatabaseReference colorRef =
+        FirebaseDatabase.instance.ref('users/${widget.email}/appColor');
+
+    colorRef.onValue.listen((event) {
+      if (event.snapshot.exists) {
+        String colorValue = event.snapshot.value.toString();
+        setState(() {
+          color_1 =
+              _getColorFromHex(colorValue); // Convert the color string to Color
+        });
+      }
+    });
+  }
+
+  Color _getColorFromHex(String hexColor) {
+    hexColor = hexColor.replaceAll("#", "");
+    if (hexColor.length == 6) {
+      hexColor = "FF$hexColor"; // Add alpha if not provided
+    }
+    return Color(int.parse(hexColor, radix: 16));
   }
 
   void _onItemTapped(int index) {
@@ -85,14 +114,15 @@ class _HomePageState extends State<HomePage> {
                 children: [
                   _profileImageUrl != null
                       ? CircleAvatar(
-                    radius: 40,
-                    backgroundImage: NetworkImage(_profileImageUrl!),
-                  )
+                          radius: 40,
+                          backgroundImage: NetworkImage(_profileImageUrl!),
+                        )
                       : const CircleAvatar(
-                    radius: 40,
-                    backgroundColor: Colors.grey,
-                    child: Icon(Icons.person, size: 40, color: Colors.white),
-                  ),
+                          radius: 40,
+                          backgroundColor: Colors.grey,
+                          child:
+                              Icon(Icons.person, size: 40, color: Colors.white),
+                        ),
                   const SizedBox(height: 16),
                   const Text(
                     'Menu',
@@ -107,6 +137,19 @@ class _HomePageState extends State<HomePage> {
               onTap: () {
                 // Navigate to Active Status page
                 Navigator.pop(context); // Close the drawer
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.palette),
+              title: const Text('Color Mode'),
+              onTap: () {
+                // Navigate to Active Status page
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ColorModePage(email: widget.email, text: "Select Theme Color"),
+                  ),
+                );
               },
             ),
             ListTile(
@@ -148,9 +191,7 @@ class _HomePageState extends State<HomePage> {
             ListTile(
               leading: const Icon(Icons.memory),
               title: const Text('Memories'),
-              onTap: () {
-
-              },
+              onTap: () {},
             ),
             ListTile(
               leading: const Icon(Icons.block),
@@ -160,9 +201,11 @@ class _HomePageState extends State<HomePage> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => BlockedContactsPage(email: widget.email),
+                    builder: (context) =>
+                        BlockedContactsPage(email: widget.email),
                   ),
-                );              },
+                );
+              },
             ),
             ListTile(
               leading: const Icon(Icons.password),
@@ -171,7 +214,8 @@ class _HomePageState extends State<HomePage> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => ResetPasswordPage(email: widget.email),
+                    builder: (context) =>
+                        ResetPasswordPage(email: widget.email),
                   ),
                 );
               },
@@ -180,12 +224,18 @@ class _HomePageState extends State<HomePage> {
               leading: const Icon(Icons.logout),
               title: const Text('Sign Out'),
               onTap: () async {
+                final databaseReference = FirebaseDatabase.instance.ref();
+                await databaseReference
+                    .child('users/${widget.email}/activeStatus')
+                    .set('Offline');
                 // Clear the saved email from SharedPreferences
-                final SharedPreferences prefs = await SharedPreferences.getInstance();
+                final SharedPreferences prefs =
+                    await SharedPreferences.getInstance();
                 await prefs.remove('rememberedEmail');
 
                 // Navigate back to the Sign In page
-                Navigator.pushNamedAndRemoveUntil(context, '/signin', (route) => false);
+                Navigator.pushNamedAndRemoveUntil(
+                    context, '/signin', (route) => false);
               },
             ),
           ],
@@ -204,7 +254,8 @@ class _HomePageState extends State<HomePage> {
       ),
       bottomNavigationBar: Theme(
         data: Theme.of(context).copyWith(
-          canvasColor: Colors.white, // Ensures the background is white even if overridden by the theme
+          canvasColor: Colors
+              .white, // Ensures the background is white even if overridden by the theme
         ),
         child: BottomNavigationBar(
           items: const <BottomNavigationBarItem>[
@@ -226,8 +277,10 @@ class _HomePageState extends State<HomePage> {
             ),
           ],
           currentIndex: _selectedIndex,
-          selectedItemColor: color_1, // Set the color when an item is selected
-          unselectedItemColor: Colors.grey, // Set the color when an item is not selected
+          selectedItemColor: color_1,
+          // Set the color when an item is selected
+          unselectedItemColor: Colors.grey,
+          // Set the color when an item is not selected
           onTap: _onItemTapped,
         ),
       ),

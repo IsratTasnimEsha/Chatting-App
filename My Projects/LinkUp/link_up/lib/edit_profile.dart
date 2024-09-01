@@ -4,7 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:firebase_storage/firebase_storage.dart';
 
-const Color color_1 = Colors.blue;
+Color color_1 = Colors.blue;
 const Color errorColor = Colors.red;
 
 class EditProfilePage extends StatefulWidget {
@@ -43,6 +43,29 @@ class _EditProfilePageState extends State<EditProfilePage> {
     super.initState();
     _loadUserData();
     _loadProfileImage();
+    _fetchUserColor(); // Fetch the color for other_email
+  }
+
+  void _fetchUserColor() {
+    DatabaseReference colorRef = FirebaseDatabase.instance
+        .ref('users/${widget.email}/appColor');
+
+    colorRef.onValue.listen((event) {
+      if (event.snapshot.exists) {
+        String colorValue = event.snapshot.value.toString();
+        setState(() {
+          color_1 = _getColorFromHex(colorValue); // Convert the color string to Color
+        });
+      }
+    });
+  }
+
+  Color _getColorFromHex(String hexColor) {
+    hexColor = hexColor.replaceAll("#", "");
+    if (hexColor.length == 6) {
+      hexColor = "FF$hexColor"; // Add alpha if not provided
+    }
+    return Color(int.parse(hexColor, radix: 16));
   }
 
   void _loadUserData() async {
