@@ -213,15 +213,6 @@ class _FriendRequestsPageState extends State<FriendRequestsPage> {
     FirebaseDatabase.instance.ref("users/$e1/friend/");
     await ref2_2.child(formattedTime).set(e2);
 
-    // Using push() to generate a unique key
-    final DatabaseReference ref3_1 =
-    FirebaseDatabase.instance.ref("users/$e2/chatColor/");
-    await ref3_1.child(e1).set('ff448aff');
-
-    final DatabaseReference ref3_2 =
-    FirebaseDatabase.instance.ref("users/$e1/chatColor/");
-    await ref3_2.child(e2).set('ff448aff');
-
     // Update the UI to remove the user from the list after sending the request
     setState(() {
       _userNames.remove(email);

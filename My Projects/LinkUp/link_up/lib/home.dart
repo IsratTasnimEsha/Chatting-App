@@ -6,12 +6,10 @@ import 'package:link_up/chats.dart';
 import 'package:link_up/friend_requests.dart';
 import 'package:link_up/requests_sent.dart';
 import 'package:link_up/search_people.dart';
-import 'package:link_up/stories.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'color_mode.dart';
 import 'edit_profile.dart';
 import 'friends.dart';
-import 'reset_password.dart';
 
 Color color_1 = Colors.blue;
 
@@ -27,6 +25,7 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   String? _profileImageUrl;
   int _selectedIndex = 0;
+  String username = '';
 
   Future<void> _loadProfileImage() async {
     try {
@@ -58,6 +57,7 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     _loadProfileImage();
+    _fetchUserName();
     _fetchUserColor();
 
     // Initialize _widgetOptions with the email passed from widget.email
@@ -65,7 +65,6 @@ class _HomePageState extends State<HomePage> {
       ChatsPage(email: widget.email),
       FriendRequestsPage(email: widget.email),
       SearchPeoplePage(email: widget.email), // Use widget.email here
-      const StoriesPage(),
     ];
   }
 
@@ -79,6 +78,21 @@ class _HomePageState extends State<HomePage> {
         setState(() {
           color_1 =
               _getColorFromHex(colorValue); // Convert the color string to Color
+        });
+      }
+    });
+  }
+
+  void _fetchUserName() {
+    DatabaseReference nameRef = FirebaseDatabase.instance.ref('users/${widget.email}/name');
+    nameRef.onValue.listen((event) {
+      if (event.snapshot.exists) {
+        setState(() {
+          username = event.snapshot.value.toString();
+        });
+      } else {
+        setState(() {
+          username = 'Unknown User'; // Default value if not found
         });
       }
     });
@@ -112,32 +126,38 @@ class _HomePageState extends State<HomePage> {
               ),
               child: Column(
                 children: [
-                  _profileImageUrl != null
-                      ? CircleAvatar(
-                          radius: 40,
-                          backgroundImage: NetworkImage(_profileImageUrl!),
-                        )
-                      : const CircleAvatar(
-                          radius: 40,
-                          backgroundColor: Colors.grey,
-                          child:
-                              Icon(Icons.person, size: 40, color: Colors.white),
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => EditProfilePage(email: widget.email),
                         ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Menu',
-                    style: TextStyle(),
+                      );
+                    },
+                    child: _profileImageUrl != null
+                        ? CircleAvatar(
+                      radius: 40,
+                      backgroundImage: NetworkImage(_profileImageUrl!),
+                    )
+                        : const CircleAvatar(
+                      radius: 40,
+                      backgroundColor: Colors.grey,
+                      child: Icon(Icons.person, size: 40, color: Colors.white),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    username,
+                    style: TextStyle(fontWeight: FontWeight.normal), // Added style for better visibility
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    formattedEmail(widget.email),
+                    style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.normal), // Added style for better visibility
                   ),
                 ],
               ),
-            ),
-            ListTile(
-              leading: const Icon(Icons.toggle_on),
-              title: const Text('Active Status'),
-              onTap: () {
-                // Navigate to Active Status page
-                Navigator.pop(context); // Close the drawer
-              },
             ),
             ListTile(
               leading: const Icon(Icons.palette),
@@ -177,23 +197,6 @@ class _HomePageState extends State<HomePage> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.edit),
-              title: const Text('Edit Profile'),
-              onTap: () async {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => EditProfilePage(email: widget.email),
-                  ),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.memory),
-              title: const Text('Memories'),
-              onTap: () {},
-            ),
-            ListTile(
               leading: const Icon(Icons.block),
               title: const Text('Blocked Contacts'),
               onTap: () {
@@ -203,19 +206,6 @@ class _HomePageState extends State<HomePage> {
                   MaterialPageRoute(
                     builder: (context) =>
                         BlockedContactsPage(email: widget.email),
-                  ),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.password),
-              title: const Text('Reset Password'),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) =>
-                        ResetPasswordPage(email: widget.email),
                   ),
                 );
               },
@@ -271,10 +261,6 @@ class _HomePageState extends State<HomePage> {
               icon: Icon(Icons.search),
               label: 'Search People',
             ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.amp_stories),
-              label: 'Stories',
-            ),
           ],
           currentIndex: _selectedIndex,
           selectedItemColor: color_1,
@@ -285,5 +271,9 @@ class _HomePageState extends State<HomePage> {
         ),
       ),
     );
+  }
+
+  String formattedEmail(String email) {
+    return email.replaceAll('_dot_', '.').replaceAll('_at_', '@');
   }
 }

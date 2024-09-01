@@ -10,6 +10,7 @@ import 'package:flutter/services.dart';
 import 'document_type.dart';
 import 'document_viewer.dart';
 import 'full_screen_image.dart';
+import 'package:intl/intl.dart';
 
 Color color_1 = Colors.blue;
 
@@ -53,7 +54,7 @@ class _UserMessagePageState extends State<UserMessagePage> {
 
   void _fetchUserColor() {
     DatabaseReference colorRef = FirebaseDatabase.instance
-        .ref('users/${widget.email}/chatColor/${widget.other_email}');
+        .ref('users/${widget.email}/appColor/');
 
     colorRef.onValue.listen((event) {
       final data = event.snapshot.value;
@@ -615,12 +616,22 @@ class _UserMessagePageState extends State<UserMessagePage> {
   }
 
   Widget _buildDocumentWidget(String fileUrl, bool isCurrentUser) {
-    final fileName = _decodeFileName(fileUrl);
+    // Extract the file name from the URL
+    final fullPath = _decodeFileName(fileUrl);
+    final fileName = fullPath.split('/').last;
     final documentType = getDocumentType(fileName);
 
     return GestureDetector(
       onTap: () {
         // Handle document tap (e.g., navigate to a document viewer or download)
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => DocumentViewerPage(
+              documentUrl: fileUrl, // Pass the document URL here
+            ),
+          ),
+        );
       },
       child: ClipRRect(
         borderRadius: BorderRadius.circular(12.0),
@@ -633,8 +644,7 @@ class _UserMessagePageState extends State<UserMessagePage> {
             border: Border.all(color: Colors.grey, width: 1),
           ),
           child: Container(
-            padding:
-                const EdgeInsets.symmetric(vertical: 8.0, horizontal: 12.0),
+            padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 12.0),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -642,16 +652,17 @@ class _UserMessagePageState extends State<UserMessagePage> {
                   documentType.icon,
                   color: isCurrentUser
                       ? Colors.white
-                      : color_1, // Set the icon color
+                      : Colors.black, // Set the icon color
                 ),
                 SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    documentType.type,
+                    fileName, // Display only the file name
                     style: TextStyle(
+                      fontSize: 14,
                       color: isCurrentUser
                           ? Colors.white
-                          : color_1, // Set color based on isCurrentUser
+                          : Colors.black, // Set color based on isCurrentUser
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -679,8 +690,15 @@ class _UserMessagePageState extends State<UserMessagePage> {
           children: [
             // First column: Profile picture
             GestureDetector(
-              onTap: () => _buildProfilePage(),
-              // Call the function when the CircleAvatar is tapped
+              onTap: () {
+                final profilePage = _buildProfilePage();
+                if (profilePage != null) { // Check if _buildProfilePage returns a valid widget
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => profilePage),
+                  );
+                }
+              },
               child: CircleAvatar(
                 backgroundImage: _profilePicUrl.isNotEmpty
                     ? NetworkImage(_profilePicUrl)
@@ -734,10 +752,9 @@ class _UserMessagePageState extends State<UserMessagePage> {
                   bool isOtherUserMessage =
                       messageData.containsKey(widget.other_email);
 
-                  final timeString =
-                      DateTime.fromMillisecondsSinceEpoch(int.parse(messageId))
-                          .toLocal()
-                          .toString();
+                  final DateTime dateTime = DateTime.fromMillisecondsSinceEpoch(int.parse(messageId)).toLocal();
+                  final DateFormat formatter = DateFormat('yyyy-MM-dd H:m:s');
+                  final String timeString = formatter.format(dateTime);
 
                   final firstValue = messageId;
                   final secondValue =
@@ -766,10 +783,22 @@ class _UserMessagePageState extends State<UserMessagePage> {
                             : MainAxisAlignment.start,
                         children: [
                           if (!isCurrentUserMessage)
-                            CircleAvatar(
-                              backgroundImage: _profilePicUrl.isNotEmpty
-                                  ? NetworkImage(_profilePicUrl)
-                                  : null,
+                            GestureDetector(
+                              onTap: () {
+                                final Widget profilePage = _buildProfilePage(); // No need to check for null if _buildProfilePage always returns a widget
+                                if (profilePage is Widget) { // Ensure that it returns a valid widget
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(builder: (context) => profilePage),
+                                  );
+                                }
+                              },
+                              child: CircleAvatar(
+                                backgroundImage: _profilePicUrl.isNotEmpty
+                                    ? NetworkImage(_profilePicUrl)
+                                    : null,
+                                child: _profilePicUrl.isEmpty ? Icon(Icons.person) : null,
+                              ),
                             ),
                           SizedBox(width: 8),
                           Expanded(

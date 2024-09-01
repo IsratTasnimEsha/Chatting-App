@@ -105,7 +105,7 @@ class _ViewFriendProfilePageState extends State<ViewFriendProfilePage> {
 
   void _fetchUserColor() {
     DatabaseReference colorRef = FirebaseDatabase.instance
-        .ref('users/${widget.email}/appColor');
+        .ref('users/${widget.other_email}/appColor');
 
     colorRef.onValue.listen((event) {
       if (event.snapshot.exists) {

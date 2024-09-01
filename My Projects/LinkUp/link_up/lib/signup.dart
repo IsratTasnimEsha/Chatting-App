@@ -613,7 +613,7 @@ class _SignupPageState extends State<SignUpPage> {
       'address': address,
       'gender': gender,
       'aboutMe': about_me,
-      'activeStatus': 'off',
+      'activeStatus': 'Offline',
       'appColor': 'ff448aff'
     });
   }

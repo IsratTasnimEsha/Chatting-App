@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:link_up/reset_password.dart';
 
 Color color_1 = Colors.blue;
 const Color errorColor = Colors.red;
@@ -667,6 +668,28 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   ],
                 ),
                 const SizedBox(height: 10),
+                Align(
+                  alignment: Alignment.bottomRight,
+                  child: TextButton(
+                    onPressed: () {
+                      // Add your logic to navigate to the Reset Password page or show a dialog
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              ResetPasswordPage(email: widget.email),
+                        ),
+                      );
+                    },
+                    child: Text(
+                      'Reset Password',
+                      style: TextStyle(
+                        color: color_1, // Use the color defined in your app
+                        fontWeight: FontWeight.normal,
+                      ),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),

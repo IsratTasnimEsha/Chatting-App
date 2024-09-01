@@ -19,5 +19,8 @@ final Map<String, DocumentType> documentTypes = {
   'mp4': DocumentType('Video File', Icons.video_library),
   'avi': DocumentType('Video File', Icons.video_library),
   'mov': DocumentType('Video File', Icons.video_library),
+  'png': DocumentType('Image File', Icons.image),
+  'jpg': DocumentType('Image File', Icons.image),
+  'jpeg': DocumentType('Image File', Icons.image),
   // Add more document types as needed
 };
