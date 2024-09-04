@@ -10,6 +10,8 @@ import 'package:android_intent_plus/android_intent.dart';
 import 'package:android_intent_plus/flag.dart';
 import 'package:flutter/foundation.dart';
 
+import 'full_screen_image.dart';
+
 const Color backgroundColor = Color(0xFFF5F5F5);
 const Color textColor = Color(0xFF212121);
 const Color subtitleColor = Color(0xFF757575);
@@ -489,17 +491,42 @@ class _ViewFriendProfilePageState extends State<ViewFriendProfilePage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Center(
-                child: CircleAvatar(
-                  radius: 80,
-                  backgroundImage: _profileImage != null
-                      ? FileImage(_profileImage!) as ImageProvider
-                      : (_profileImageUrl != null
-                      ? NetworkImage(_profileImageUrl!) as ImageProvider
-                      : (_selectedGender == 'Female'
-                      ? const AssetImage('assets/female.png')
-                      : const AssetImage('assets/male.png'))),
-                  backgroundColor: Colors.grey[300],
+              GestureDetector(
+                onTap: () {
+                  // Check if there's a profile image (either local or network)
+                  if (_profileImage != null || _profileImageUrl != null) {
+                    String imageUrl;
+
+                    if (_profileImage != null) {
+                      // If the image is a local file
+                      imageUrl = _profileImage!.path;
+                    } else {
+                      // If the image is from a network URL
+                      imageUrl = _profileImageUrl!;
+                    }
+
+                    // Navigate to the full-screen image page
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => FullScreenImagePage2(imageUrl: imageUrl),
+                      ),
+                    );
+                  }
+                  // No action is taken if there's no profile picture
+                },
+                child: Center(
+                  child: CircleAvatar(
+                    radius: 80,
+                    backgroundImage: _profileImage != null
+                        ? FileImage(_profileImage!) as ImageProvider
+                        : (_profileImageUrl != null
+                        ? NetworkImage(_profileImageUrl!) as ImageProvider
+                        : (_selectedGender == 'Female'
+                        ? const AssetImage('assets/female.png')
+                        : const AssetImage('assets/male.png'))),
+                    backgroundColor: Colors.grey[300],
+                  ),
                 ),
               ),
               const SizedBox(height: 16),

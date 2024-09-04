@@ -26,13 +26,13 @@ class UserMessagePage extends StatefulWidget {
 
 class _UserMessagePageState extends State<UserMessagePage> {
   final DatabaseReference _userRef =
-      FirebaseDatabase.instance.reference().child('users');
+  FirebaseDatabase.instance.reference().child('users');
   final FirebaseStorage _storage = FirebaseStorage.instance;
   final TextEditingController _messageController = TextEditingController();
   final ImagePicker _picker = ImagePicker();
   final List<Map<String, dynamic>> _messages = []; // List to hold chat messages
   final ScrollController _scrollController =
-      ScrollController(); // Scroll controller for ListView
+  ScrollController(); // Scroll controller for ListView
 
   String _username = '';
   String _status = '';
@@ -95,7 +95,7 @@ class _UserMessagePageState extends State<UserMessagePage> {
       final friendsSnapshot = await userRef.get();
       if (friendsSnapshot.exists) {
         final friendsList =
-            Map<dynamic, dynamic>.from(friendsSnapshot.value as Map);
+        Map<dynamic, dynamic>.from(friendsSnapshot.value as Map);
         return friendsList.containsValue(otherEmail);
       }
     } catch (e) {
@@ -112,7 +112,7 @@ class _UserMessagePageState extends State<UserMessagePage> {
       final blockSnapshot = await userRef1.get();
       if (blockSnapshot.exists) {
         final blockList =
-            Map<dynamic, dynamic>.from(blockSnapshot.value as Map);
+        Map<dynamic, dynamic>.from(blockSnapshot.value as Map);
         return blockList.containsValue(otherEmail);
       }
     } catch (e) {
@@ -125,7 +125,7 @@ class _UserMessagePageState extends State<UserMessagePage> {
       final blockSnapshot = await userRef2.get();
       if (blockSnapshot.exists) {
         final blockList =
-            Map<dynamic, dynamic>.from(blockSnapshot.value as Map);
+        Map<dynamic, dynamic>.from(blockSnapshot.value as Map);
         return blockList.containsValue(otherEmail);
       }
     } catch (e) {
@@ -144,7 +144,7 @@ class _UserMessagePageState extends State<UserMessagePage> {
 
   void _listenToMessages() {
     final chatRef =
-        _userRef.child('${widget.email}/chat/${widget.other_email}');
+    _userRef.child('${widget.email}/chat/${widget.other_email}');
 
     chatRef.onChildAdded.listen((event) {
       final messageId = event.snapshot.key;
@@ -215,7 +215,7 @@ class _UserMessagePageState extends State<UserMessagePage> {
 
     // Fetch and listen for profile picture URL
     final profilePicRef =
-        _storage.ref().child('users/${widget.other_email}/profile_pic.png');
+    _storage.ref().child('users/${widget.other_email}/profile_pic.png');
     profilePicRef.getDownloadURL().then((url) {
       setState(() {
         _profilePicUrl = url;
@@ -247,7 +247,7 @@ class _UserMessagePageState extends State<UserMessagePage> {
                   title: Text('Camera'),
                   onTap: () async {
                     final pickedFile =
-                        await _picker.pickImage(source: ImageSource.camera);
+                    await _picker.pickImage(source: ImageSource.camera);
                     Navigator.pop(context, pickedFile);
                   },
                 ),
@@ -256,7 +256,7 @@ class _UserMessagePageState extends State<UserMessagePage> {
                   title: Text('Gallery'),
                   onTap: () async {
                     final pickedFile =
-                        await _picker.pickImage(source: ImageSource.gallery);
+                    await _picker.pickImage(source: ImageSource.gallery);
                     Navigator.pop(context, pickedFile);
                   },
                 ),
@@ -394,9 +394,9 @@ class _UserMessagePageState extends State<UserMessagePage> {
   // Add this method to handle deletion
   Future<void> _deleteMessage(String messageId, bool deleteForEveryone) async {
     final messageRef1 =
-        _userRef.child('${widget.email}/chat/${widget.other_email}/$messageId');
+    _userRef.child('${widget.email}/chat/${widget.other_email}/$messageId');
     final messageRef2 =
-        _userRef.child('${widget.other_email}/chat/${widget.email}/$messageId');
+    _userRef.child('${widget.other_email}/chat/${widget.email}/$messageId');
 
     try {
       if (deleteForEveryone) {
@@ -437,7 +437,7 @@ class _UserMessagePageState extends State<UserMessagePage> {
       context: context,
       builder: (BuildContext context) {
         final TextEditingController _editController =
-            TextEditingController(text: currentMessage);
+        TextEditingController(text: currentMessage);
 
         return AlertDialog(
           title: Text('Edit Message'),
@@ -480,9 +480,9 @@ class _UserMessagePageState extends State<UserMessagePage> {
 
   Future<void> _updateMessage(String messageId, String newMessage) async {
     final messageRef1 =
-        _userRef.child('${widget.email}/chat/${widget.other_email}/$messageId');
+    _userRef.child('${widget.email}/chat/${widget.other_email}/$messageId');
     final messageRef2 =
-        _userRef.child('${widget.other_email}/chat/${widget.email}/$messageId');
+    _userRef.child('${widget.other_email}/chat/${widget.email}/$messageId');
 
     try {
       await messageRef1.update({
@@ -741,16 +741,16 @@ class _UserMessagePageState extends State<UserMessagePage> {
                   final message = _messages[index];
                   final messageId = message['id'];
                   final messageData =
-                      message['messages'] as Map<dynamic, dynamic>?;
+                  message['messages'] as Map<dynamic, dynamic>?;
 
                   if (messageData == null) {
                     return SizedBox.shrink();
                   }
 
                   bool isCurrentUserMessage =
-                      messageData.containsKey(widget.email);
+                  messageData.containsKey(widget.email);
                   bool isOtherUserMessage =
-                      messageData.containsKey(widget.other_email);
+                  messageData.containsKey(widget.other_email);
 
                   final DateTime dateTime = DateTime.fromMillisecondsSinceEpoch(int.parse(messageId)).toLocal();
                   final DateFormat formatter = DateFormat('yyyy-MM-dd H:m:s');
@@ -758,7 +758,7 @@ class _UserMessagePageState extends State<UserMessagePage> {
 
                   final firstValue = messageId;
                   final secondValue =
-                      isOtherUserMessage ? widget.other_email : widget.email;
+                  isOtherUserMessage ? widget.other_email : widget.email;
                   final thirdValue = messageData[secondValue] ?? '';
                   final isEdited = messageData.containsKey('edited') &&
                       messageData['edited'] == true;
@@ -773,7 +773,7 @@ class _UserMessagePageState extends State<UserMessagePage> {
                       onTap: () {
                         setState(() {
                           _tappedCardIndex =
-                              _tappedCardIndex == index ? null : index;
+                          _tappedCardIndex == index ? null : index;
                         });
                         print('Tapped index: $_tappedCardIndex');
                       },
@@ -819,7 +819,7 @@ class _UserMessagePageState extends State<UserMessagePage> {
                                 if (thirdValue == '**##image*#@#*storage##**')
                                   FutureBuilder<String>(
                                     future:
-                                        _getImageUrl(firstValue, secondValue),
+                                    _getImageUrl(firstValue, secondValue),
                                     builder: (context, snapshot) {
                                       if (snapshot.connectionState ==
                                           ConnectionState.waiting) {
@@ -834,21 +834,21 @@ class _UserMessagePageState extends State<UserMessagePage> {
                                               MaterialPageRoute(
                                                 builder: (context) =>
                                                     FullScreenImagePage2(
-                                                  imageUrl: snapshot.data!,
-                                                ),
+                                                      imageUrl: snapshot.data!,
+                                                    ),
                                               ),
                                             );
                                           },
                                           child: ClipRRect(
                                             borderRadius:
-                                                BorderRadius.circular(12.0),
+                                            BorderRadius.circular(12.0),
                                             child: Container(
                                               height: 100,
                                               width: 150,
                                               decoration: BoxDecoration(
                                                 color: Colors.black,
                                                 borderRadius:
-                                                    BorderRadius.circular(12.0),
+                                                BorderRadius.circular(12.0),
                                                 border: Border.all(
                                                     color: Colors.grey,
                                                     width: 1),
@@ -887,74 +887,74 @@ class _UserMessagePageState extends State<UserMessagePage> {
                                     },
                                   )
                                 else if (thirdValue ==
-                                    '**##deleted*#@#*message##**')
-                                  Card(
-                                    color: Colors.transparent,
-                                    elevation: 0,
-                                    child: Container(
-                                      padding: const EdgeInsets.all(8.0),
-                                      child: Text(
-                                        'This message was deleted',
-                                        style: TextStyle(
-                                          fontStyle: FontStyle.italic,
-                                          color: Colors.grey,
-                                        ),
-                                      ),
-                                    ),
-                                  )
-                                else
-                                  Card(
-                                    color: isCurrentUserMessage
-                                        ? color_1
-                                        : Colors.white,
-                                    elevation: 4,
-                                    child: ConstrainedBox(
-                                      constraints: BoxConstraints(
-                                        maxWidth:
-                                            MediaQuery.of(context).size.width *
-                                                0.5,
-                                      ),
+                                      '**##deleted*#@#*message##**')
+                                    Card(
+                                      color: Colors.transparent,
+                                      elevation: 0,
                                       child: Container(
                                         padding: const EdgeInsets.all(8.0),
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              thirdValue,
-                                              style: TextStyle(
-                                                color: isCurrentUserMessage
-                                                    ? Colors.white
-                                                    : Colors.black,
+                                        child: Text(
+                                          'This message was deleted',
+                                          style: TextStyle(
+                                            fontStyle: FontStyle.italic,
+                                            color: Colors.grey,
+                                          ),
+                                        ),
+                                      ),
+                                    )
+                                  else
+                                    Card(
+                                      color: isCurrentUserMessage
+                                          ? color_1
+                                          : Colors.white,
+                                      elevation: 4,
+                                      child: ConstrainedBox(
+                                        constraints: BoxConstraints(
+                                          maxWidth:
+                                          MediaQuery.of(context).size.width *
+                                              0.5,
+                                        ),
+                                        child: Container(
+                                          padding: const EdgeInsets.all(8.0),
+                                          child: Column(
+                                            crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                thirdValue,
+                                                style: TextStyle(
+                                                  color: isCurrentUserMessage
+                                                      ? Colors.white
+                                                      : Colors.black,
+                                                ),
                                               ),
-                                            ),
-                                            if (isEdited)
-                                              Align(
-                                                alignment:
-                                                    Alignment.bottomRight,
-                                                child: Padding(
-                                                  padding:
-                                                      const EdgeInsets.only(
-                                                          top: 4.0),
-                                                  child: Text(
-                                                    '(edited)',
-                                                    style: TextStyle(
-                                                      fontSize: 12,
-                                                      fontStyle:
-                                                          FontStyle.italic,
-                                                      color: secondValue ==
-                                                              widget.email
-                                                          ? Colors.white
-                                                          : Colors.grey,
+                                              if (isEdited)
+                                                Align(
+                                                  alignment:
+                                                  Alignment.bottomRight,
+                                                  child: Padding(
+                                                    padding:
+                                                    const EdgeInsets.only(
+                                                        top: 4.0),
+                                                    child: Text(
+                                                      '(edited)',
+                                                      style: TextStyle(
+                                                        fontSize: 12,
+                                                        fontStyle:
+                                                        FontStyle.italic,
+                                                        color: secondValue ==
+                                                            widget.email
+                                                            ? Colors.white
+                                                            : Colors.grey,
+                                                      ),
                                                     ),
                                                   ),
                                                 ),
-                                              ),
-                                          ],
+                                            ],
+                                          ),
                                         ),
                                       ),
                                     ),
-                                  ),
                               ],
                             ),
                           ),
@@ -969,7 +969,7 @@ class _UserMessagePageState extends State<UserMessagePage> {
             if (_selectedDocument != null)
               Padding(
                 padding:
-                    const EdgeInsets.symmetric(vertical: 4.0, horizontal: 20),
+                const EdgeInsets.symmetric(vertical: 4.0, horizontal: 20),
                 child: Row(
                   children: [
                     Expanded(
@@ -983,7 +983,7 @@ class _UserMessagePageState extends State<UserMessagePage> {
                       onPressed: () {
                         setState(() {
                           _selectedDocument =
-                              null; // Remove the selected document
+                          null; // Remove the selected document
                         });
                       },
                     ),

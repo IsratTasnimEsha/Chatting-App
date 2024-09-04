@@ -5,6 +5,8 @@ import 'dart:io';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:link_up/reset_password.dart';
 
+import 'full_screen_image.dart';
+
 Color color_1 = Colors.blue;
 const Color errorColor = Colors.red;
 
@@ -284,91 +286,115 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 Center(
                   child: Stack(
                     children: [
-                      Center(
-                        child: Stack(
-                          children: [
-                            CircleAvatar(
-                              radius: 80,
-                              backgroundImage: _profileImage != null
-                                  ? FileImage(_profileImage!) as ImageProvider
-                                  : (_profileImageUrl != null
-                                  ? NetworkImage(_profileImageUrl!) as ImageProvider
-                                  : (_selectedGender == 'Female'
-                                  ? AssetImage('assets/female.png') as ImageProvider
-                                  : AssetImage('assets/male.png') as ImageProvider)),
-                              backgroundColor: Colors.grey[200],
-                            ),
-                            Positioned(
-                              bottom: 0,
-                              right: 0,
-                              child: GestureDetector(
-                                onTap: () => _showImagePickerOptions(context),
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: color_1,
-                                  ),
-                                  padding: const EdgeInsets.all(8.0),
-                                  child: const Icon(
-                                    Icons.camera_alt,
-                                    color: Colors.white,
-                                    size: 24,
-                                  ),
-                                ),
+                      GestureDetector(
+                        onTap: () {
+                          // Check if there's a profile image (either local or network)
+                          if (_profileImage != null || _profileImageUrl != null) {
+                            String imageUrl;
+
+                            if (_profileImage != null) {
+                              // If the image is a local file
+                              imageUrl = _profileImage!.path;
+                            } else {
+                              // If the image is from a network URL
+                              imageUrl = _profileImageUrl!;
+                            }
+
+                            // Navigate to the full-screen image page
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => FullScreenImagePage2(imageUrl: imageUrl),
                               ),
-                            ),
-                            Positioned(
-                              bottom: 0,
-                              left: 0, // Position this button at the bottom-left corner
-                              child: GestureDetector(
-                                onTap: () async {
-                                  // Implement the action for saving the image here
-                                  String? imageUrl;
-                                  String email = widget.email;
-
-                                  Reference storageRef = await FirebaseStorage.instance.ref().child('users/$email/profile_pic.png');
-
-                                  UploadTask uploadTask = storageRef.putFile(_profileImage!);
-                                  TaskSnapshot snapshot = await uploadTask;
-                                  imageUrl = await snapshot.ref.getDownloadURL();
-
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('Profile picture uploaded successfully')),
-                                  );
-                                },
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    gradient: LinearGradient(
-                                      colors: [Colors.pinkAccent, Colors.purpleAccent],
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
+                            );
+                          }
+                          // No action is taken if there's no profile picture
+                        },
+                        child: Center(
+                          child: Stack(
+                            children: [
+                              CircleAvatar(
+                                radius: 80,
+                                backgroundImage: _profileImage != null
+                                    ? FileImage(_profileImage!) as ImageProvider
+                                    : (_profileImageUrl != null
+                                    ? NetworkImage(_profileImageUrl!) as ImageProvider
+                                    : (_selectedGender == 'Female'
+                                    ? AssetImage('assets/female.png') as ImageProvider
+                                    : AssetImage('assets/male.png') as ImageProvider)),
+                                backgroundColor: Colors.grey[200],
+                              ),
+                              Positioned(
+                                bottom: 0,
+                                right: 0,
+                                child: GestureDetector(
+                                  onTap: () => _showImagePickerOptions(context),
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: color_1,
                                     ),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.3),
-                                        spreadRadius: 2,
-                                        blurRadius: 5,
-                                        offset: Offset(2, 2),
-                                      ),
-                                    ],
-                                  ),
-                                  padding: const EdgeInsets.all(8.0),
-                                  child: const Icon(
-                                    Icons.save,
-                                    color: Colors.white,
-                                    size: 24,
+                                    padding: const EdgeInsets.all(8.0),
+                                    child: const Icon(
+                                      Icons.camera_alt,
+                                      color: Colors.white,
+                                      size: 24,
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
-                          ],
+                              Positioned(
+                                bottom: 0,
+                                left: 0, // Position this button at the bottom-left corner
+                                child: GestureDetector(
+                                  onTap: () async {
+                                    // Implement the action for saving the image here
+                                    String? imageUrl;
+                                    String email = widget.email;
+
+                                    Reference storageRef = FirebaseStorage.instance.ref().child('users/$email/profile_pic.png');
+
+                                    UploadTask uploadTask = storageRef.putFile(_profileImage!);
+                                    TaskSnapshot snapshot = await uploadTask;
+                                    imageUrl = await snapshot.ref.getDownloadURL();
+
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text('Profile picture uploaded successfully')),
+                                    );
+                                  },
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      gradient: LinearGradient(
+                                        colors: [Colors.pinkAccent, Colors.purpleAccent],
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                      ),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.3),
+                                          spreadRadius: 2,
+                                          blurRadius: 5,
+                                          offset: Offset(2, 2),
+                                        ),
+                                      ],
+                                    ),
+                                    padding: const EdgeInsets.all(8.0),
+                                    child: const Icon(
+                                      Icons.save,
+                                      color: Colors.white,
+                                      size: 24,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ],
                   ),
                 ),
-
                 const SizedBox(height: 24),
 
                 // Name TextField
