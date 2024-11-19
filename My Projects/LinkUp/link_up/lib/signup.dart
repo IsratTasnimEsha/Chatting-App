@@ -500,8 +500,8 @@ class _SignupPageState extends State<SignUpPage> {
                             password: _passwordController.text.trim(),
                           );
 
-                          if (_selectedGender.toString() != 'Male' ||
-                              _selectedGender.toString() != 'Female') {
+                          // Fix the gender selection logic
+                          if (_selectedGender == null || _selectedGender!.isEmpty) {
                             _selectedGender = 'Not Selected';
                           }
 

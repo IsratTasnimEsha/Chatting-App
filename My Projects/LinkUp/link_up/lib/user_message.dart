@@ -26,13 +26,13 @@ class UserMessagePage extends StatefulWidget {
 
 class _UserMessagePageState extends State<UserMessagePage> {
   final DatabaseReference _userRef =
-  FirebaseDatabase.instance.reference().child('users');
+      FirebaseDatabase.instance.reference().child('users');
   final FirebaseStorage _storage = FirebaseStorage.instance;
   final TextEditingController _messageController = TextEditingController();
   final ImagePicker _picker = ImagePicker();
   final List<Map<String, dynamic>> _messages = []; // List to hold chat messages
   final ScrollController _scrollController =
-  ScrollController(); // Scroll controller for ListView
+      ScrollController(); // Scroll controller for ListView
 
   String _username = '';
   String _status = '';
@@ -41,6 +41,7 @@ class _UserMessagePageState extends State<UserMessagePage> {
   int? _tappedCardIndex;
   bool _isFriend = false;
   bool _isBlock = false;
+  bool isEdited = false;
 
   @override
   void initState() {
@@ -53,8 +54,8 @@ class _UserMessagePageState extends State<UserMessagePage> {
   }
 
   void _fetchUserColor() {
-    DatabaseReference colorRef = FirebaseDatabase.instance
-        .ref('users/${widget.email}/appColor/');
+    DatabaseReference colorRef =
+        FirebaseDatabase.instance.ref('users/${widget.email}/appColor/');
 
     colorRef.onValue.listen((event) {
       final data = event.snapshot.value;
@@ -95,7 +96,7 @@ class _UserMessagePageState extends State<UserMessagePage> {
       final friendsSnapshot = await userRef.get();
       if (friendsSnapshot.exists) {
         final friendsList =
-        Map<dynamic, dynamic>.from(friendsSnapshot.value as Map);
+            Map<dynamic, dynamic>.from(friendsSnapshot.value as Map);
         return friendsList.containsValue(otherEmail);
       }
     } catch (e) {
@@ -112,7 +113,7 @@ class _UserMessagePageState extends State<UserMessagePage> {
       final blockSnapshot = await userRef1.get();
       if (blockSnapshot.exists) {
         final blockList =
-        Map<dynamic, dynamic>.from(blockSnapshot.value as Map);
+            Map<dynamic, dynamic>.from(blockSnapshot.value as Map);
         return blockList.containsValue(otherEmail);
       }
     } catch (e) {
@@ -125,7 +126,7 @@ class _UserMessagePageState extends State<UserMessagePage> {
       final blockSnapshot = await userRef2.get();
       if (blockSnapshot.exists) {
         final blockList =
-        Map<dynamic, dynamic>.from(blockSnapshot.value as Map);
+            Map<dynamic, dynamic>.from(blockSnapshot.value as Map);
         return blockList.containsValue(otherEmail);
       }
     } catch (e) {
@@ -143,42 +144,99 @@ class _UserMessagePageState extends State<UserMessagePage> {
   }
 
   void _listenToMessages() {
-    final chatRef =
-    _userRef.child('${widget.email}/chat/${widget.other_email}');
+    final chatRef = _userRef.child('${widget.email}/chat/${widget.other_email}');
 
-    chatRef.onChildAdded.listen((event) {
-      final messageId = event.snapshot.key;
-      final messageData = event.snapshot.value;
+    // Listen for new messages
+    chatRef.onChildAdded.listen((event) async {
+      final messageKey = event.snapshot.key; // This will be the push() key
+      final chatRef1 = chatRef.child('$messageKey');
 
-      setState(() {
-        _messages.add({
-          'id': messageId,
-          'messages': messageData,
-        });
-        _scrollToBottom();
-      });
-    });
+      try {
+        final snapshot = await chatRef1.once();
+        final data = snapshot.snapshot.value as Map<dynamic, dynamic>?;
 
-    chatRef.onChildChanged.listen((event) {
-      final messageId = event.snapshot.key;
-      final messageData = event.snapshot.value;
+        if (data != null) {
+          // Extract sender ID, content, and edited flag
+          String senderId = '';
+          String? content;
+          bool isEdited = data['edited'] ?? false; // Default to false if not present
 
-      setState(() {
-        final index = _messages.indexWhere((msg) => msg['id'] == messageId);
-        if (index != -1) {
-          _messages[index] = {
-            'id': messageId,
-            'messages': messageData,
-          };
+          for (var key in data.keys) {
+            if (key != 'content' && key != 'edited') {
+              senderId = key;
+              content = data[key]?['content'] as String?;
+            }
+          }
+
+          setState(() {
+            _messages.add({
+              'message_key': messageKey, // Use messageKey instead of time_id
+              'sender_id': senderId,
+              'content': content ?? '',
+              'edited': isEdited,  // Add the edited flag for each message
+            });
+            _scrollToBottom();
+          });
+        } else {
+          print('No snapshot value exists for message key: $messageKey');
         }
-      });
+      } catch (e) {
+        print('Error retrieving new message content: $e');
+      }
     });
 
+    // Listen for message updates
+    chatRef.onChildChanged.listen((event) async {
+      final messageKey = event.snapshot.key;
+      final chatRef1 = chatRef.child('$messageKey');
+
+      try {
+        final snapshot = await chatRef1.once();
+        final data = snapshot.snapshot.value as Map<dynamic, dynamic>?;
+
+        if (data != null) {
+          // Extract sender ID, content, and edited flag
+          String senderId = '';
+          String? content;
+          bool isEdited = data['edited'] ?? false; // Default to false if not present
+
+          for (var key in data.keys) {
+            if (key != 'content' && key != 'edited') {
+              senderId = key;
+              content = data[key]?['content'] as String?;
+            }
+          }
+
+          print(
+              'Message updated: message_key=$messageKey, sender_id=$senderId, content=$content, isEdited=$isEdited');
+
+          setState(() {
+            final index = _messages.indexWhere((msg) => msg['message_key'] == messageKey);
+            if (index != -1) {
+              _messages[index] = {
+                'message_key': messageKey,
+                'sender_id': senderId,
+                'content': content ?? '',
+                'edited': isEdited,  // Update the edited flag for the specific message
+              };
+            }
+          });
+        } else {
+          print('No snapshot value exists for updated message ID: $messageKey');
+        }
+      } catch (e) {
+        print('Error updating message content: $e');
+      }
+    });
+
+    // Listen for message deletions
     chatRef.onChildRemoved.listen((event) {
-      final messageId = event.snapshot.key;
+      final messageKey = event.snapshot.key;
+
+      print('Message removed: message_key=$messageKey');
 
       setState(() {
-        _messages.removeWhere((msg) => msg['id'] == messageId);
+        _messages.removeWhere((msg) => msg['message_key'] == messageKey);
       });
     });
   }
@@ -215,7 +273,7 @@ class _UserMessagePageState extends State<UserMessagePage> {
 
     // Fetch and listen for profile picture URL
     final profilePicRef =
-    _storage.ref().child('users/${widget.other_email}/profile_pic.png');
+        _storage.ref().child('users/${widget.other_email}/profile_pic.png');
     profilePicRef.getDownloadURL().then((url) {
       setState(() {
         _profilePicUrl = url;
@@ -247,7 +305,7 @@ class _UserMessagePageState extends State<UserMessagePage> {
                   title: Text('Camera'),
                   onTap: () async {
                     final pickedFile =
-                    await _picker.pickImage(source: ImageSource.camera);
+                        await _picker.pickImage(source: ImageSource.camera);
                     Navigator.pop(context, pickedFile);
                   },
                 ),
@@ -256,7 +314,7 @@ class _UserMessagePageState extends State<UserMessagePage> {
                   title: Text('Gallery'),
                   onTap: () async {
                     final pickedFile =
-                    await _picker.pickImage(source: ImageSource.gallery);
+                        await _picker.pickImage(source: ImageSource.gallery);
                     Navigator.pop(context, pickedFile);
                   },
                 ),
@@ -296,39 +354,47 @@ class _UserMessagePageState extends State<UserMessagePage> {
 
     // Reference paths for both users
     final messageRef1 = _userRef
-        .child('${widget.email}/chat/${widget.other_email}/$currentTime');
+        .child('${widget.email}/chat/${widget.other_email}')
+        .push() // Generates a unique key in real-time
+        .child('${widget.email}');
     final messageRef2 = _userRef
-        .child('${widget.other_email}/chat/${widget.email}/$currentTime');
+        .child('${widget.other_email}/chat/${widget.email}')
+        .push() // Generates a unique key in real-time
+        .child('${widget.email}');
 
     if (_messageController.text.isNotEmpty) {
       // Handle text message
       final message = _messageController.text;
-      await messageRef1.set({'${widget.email}': message});
-      await messageRef2.set({'${widget.email}': message});
+      await messageRef1.set({'content': message});
+      await messageRef2.set({'content': message});
       _messageController.clear();
     }
 
     if (_selectedImages.isNotEmpty) {
       // Handle image messages
       for (var image in _selectedImages) {
+        // Generate a unique key for the message
+        final messageKey = _userRef
+            .child('${widget.email}/chat/${widget.other_email}')
+            .push()
+            .key;
+
+        // Create storage references using the push ID
         final storageRef1 = _storage.ref().child(
-            'users/${widget.email}/chat/${widget.other_email}/$currentTime/${widget.email}/image.png');
+            'users/${widget.email}/chat/${widget.other_email}/$messageKey/${widget.email}/content/${image.path.split('/').last}');
         final storageRef2 = _storage.ref().child(
-            'users/${widget.other_email}/chat/${widget.email}/$currentTime/${widget.email}/image.png');
+            'users/${widget.other_email}/chat/${widget.email}/$messageKey/${widget.email}/content/${image.path.split('/').last}');
 
         // Upload image
         try {
           final uploadTask1 = storageRef1.putFile(File(image.path));
           final uploadTask2 = storageRef2.putFile(File(image.path));
 
-          await Future.wait(
-              [uploadTask1, uploadTask2]); // Wait for both uploads to complete
+          await Future.wait([uploadTask1, uploadTask2]); // Wait for both uploads to complete
 
           // Save image messages in the database
-          await messageRef1
-              .set({'${widget.email}': '**##image*#@#*storage##**'});
-          await messageRef2
-              .set({'${widget.email}': '**##image*#@#*storage##**'});
+          await _userRef.child('${widget.email}/chat/${widget.other_email}/$messageKey/${widget.email}').set({'content': '**##image*#@#*storage##**'});
+          await _userRef.child('${widget.other_email}/chat/${widget.email}/$messageKey/${widget.email}').set({'content': '**##image*#@#*storage##**'});
         } catch (e) {
           // Handle upload errors
           print('Error uploading image: $e');
@@ -340,79 +406,101 @@ class _UserMessagePageState extends State<UserMessagePage> {
     }
 
     if (_selectedDocument != null) {
-      // Handle document message
+      // Generate a unique key for the message (only once)
+      final messageKey = _userRef
+          .child('${widget.email}/chat/${widget.other_email}')
+          .push()
+          .key;
+
+      // Ensure the messageKey is the same for both database and storage paths
+      final fileName = _selectedDocument!.path.split('/').last;
+
       final storageRef1 = _storage.ref().child(
-          'users/${widget.email}/chat/${widget.other_email}/$currentTime/${widget.email}/${_selectedDocument!.path.split('/').last}');
+          'users/${widget.email}/chat/${widget.other_email}/$messageKey/${widget.email}/content/$fileName');
       final storageRef2 = _storage.ref().child(
-          'users/${widget.other_email}/chat/${widget.email}/$currentTime/${widget.email}/${_selectedDocument!.path.split('/').last}');
+          'users/${widget.other_email}/chat/${widget.email}/$messageKey/${widget.email}/content/$fileName');
 
       try {
+        // Upload document to both references
         final uploadTask1 = storageRef1.putFile(_selectedDocument!);
         final uploadTask2 = storageRef2.putFile(_selectedDocument!);
 
-        await Future.wait(
-            [uploadTask1, uploadTask2]); // Wait for both uploads to complete
+        await Future.wait([uploadTask1, uploadTask2]); // Wait for both uploads to complete
 
-        // Save document message in the database
-        await messageRef1
-            .set({'${widget.email}': '**##document*#@#*storage##**'});
-        await messageRef2
-            .set({'${widget.email}': '**##document*#@#*storage##**'});
+        // Save document message in the database with the same messageKey
+        await _userRef.child('${widget.email}/chat/${widget.other_email}/$messageKey/${widget.email}')
+            .set({'content': '**##document*#@#*storage##**'});
+        await _userRef.child('${widget.other_email}/chat/${widget.email}/$messageKey/${widget.email}')
+            .set({'content': '**##document*#@#*storage##**'});
+
       } catch (e) {
-        // Handle upload errors
         print('Error uploading document: $e');
       }
+
       setState(() {
-        _selectedDocument = null; // Clear selected document after sending
+        _selectedDocument = null; // Clear the selected document after sending
       });
     }
   }
 
   Future<String> _getImageUrl(String firstValue, String secondValue) async {
+    // Reference to the directory containing the image
     final storageRef = FirebaseStorage.instance.ref().child(
-        'users/${widget.email}/chat/${widget.other_email}/$firstValue/$secondValue/image.png');
-    return await storageRef.getDownloadURL();
+        'users/${widget.email}/chat/${widget.other_email}/$firstValue/$secondValue/content/');
+
+    // List all items in the 'content' folder to get the image name
+    final listResult = await storageRef.listAll();
+
+    if (listResult.items.isNotEmpty) {
+      // Assuming there is only one image, get the first item
+      final imageRef = listResult.items.first;
+
+      // Return the download URL for the image
+      return await imageRef.getDownloadURL();
+    } else {
+      throw Exception("No images found in the content folder");
+    }
   }
 
   Future<String> _getDocumentUrl(String firstValue, String secondValue) async {
-    // Construct the storage reference to the directory
+    // Reference to the directory containing the document
     final storageRef = FirebaseStorage.instance.ref().child(
-        'users/${widget.email}/chat/${widget.other_email}/$firstValue/$secondValue');
+        'users/${widget.email}/chat/${widget.other_email}/$firstValue/$secondValue/content/');
 
-    // List all files in the directory
-    final ListResult result = await storageRef.listAll();
+    // List all items in the 'content' folder to get the document name
+    final listResult = await storageRef.listAll();
 
-    // If there are any items in the directory, get the first item's download URL
-    if (result.items.isNotEmpty) {
-      final Reference firstFile = result.items.first;
-      return await firstFile.getDownloadURL();
+    if (listResult.items.isNotEmpty) {
+      // Assuming there is only one document, get the first item
+      final documentRef = listResult.items.first;
+
+      // Return the download URL for the document
+      return await documentRef.getDownloadURL();
     } else {
-      throw Exception('No document found in the specified directory');
+      throw Exception("No documents found in the content folder");
     }
   }
 
   // Add this method to handle deletion
-  Future<void> _deleteMessage(String messageId, bool deleteForEveryone) async {
-    final messageRef1 =
-    _userRef.child('${widget.email}/chat/${widget.other_email}/$messageId');
-    final messageRef2 =
-    _userRef.child('${widget.other_email}/chat/${widget.email}/$messageId');
+  Future<void> _deleteMessage(String messageKey, bool deleteForEveryone) async {
+    final messageRef1 = _userRef.child(
+        '${widget.email}/chat/${widget.other_email}/$messageKey/${widget.email}');
+    final messageRef2 = _userRef.child(
+        '${widget.other_email}/chat/${widget.email}/$messageKey/${widget.email}');
 
     try {
       if (deleteForEveryone) {
-        await messageRef1
-            .set({'${widget.email}': '**##deleted*#@#*message##**'});
-        await messageRef2
-            .set({'${widget.email}': '**##deleted*#@#*message##**'});
+        await messageRef1.set({'content': '**##deleted*#@#*message##**'});
+        await messageRef2.set({'content': '**##deleted*#@#*message##**'});
       } else {
         await messageRef1.remove();
       }
 
       // Remove the image if it exists
       final storageRef1 = _storage.ref().child(
-          'users/${widget.email}/chat/${widget.other_email}/$messageId/${widget.email}/image.png');
+          'users/${widget.email}/chat/${widget.other_email}/$messageKey/${widget.email}/content/image.png');
       final storageRef2 = _storage.ref().child(
-          'users/${widget.other_email}/chat/${widget.email}/$messageId/${widget.email}/image.png');
+          'users/${widget.other_email}/chat/${widget.email}/$messageKey/${widget.email}/content/image.png');
 
       if (deleteForEveryone) {
         await Future.wait([
@@ -425,25 +513,36 @@ class _UserMessagePageState extends State<UserMessagePage> {
 
       // Update local state
       setState(() {
-        _messages.removeWhere((message) => message['id'] == messageId);
+        _messages.removeWhere((message) => message['id'] == messageKey);
       });
     } catch (e) {
       print('Error deleting message: $e');
     }
   }
 
-  void _editMessage(String messageId, String currentMessage) {
+  void _copyText(String messageKey, String text) {
+    Clipboard.setData(ClipboardData(text: text)).then((_) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Message copied to clipboard')),
+      );
+    }).catchError((e) {
+      print('Error copying text: $e');
+    });
+  }
+
+  void _editMessage(String messageKey, String currentMessage) {
+    final TextEditingController _editController =
+        TextEditingController(text: currentMessage);
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        final TextEditingController _editController =
-        TextEditingController(text: currentMessage);
-
         return AlertDialog(
           title: Text('Edit Message'),
           content: TextField(
             controller: _editController,
             decoration: InputDecoration(hintText: 'Edit your message'),
+            autofocus: true, // Automatically focus on the TextField
           ),
           actions: [
             TextButton(
@@ -454,10 +553,17 @@ class _UserMessagePageState extends State<UserMessagePage> {
             ),
             TextButton(
               onPressed: () async {
-                final newMessage = _editController.text;
+                final newMessage = _editController.text
+                    .trim(); // Remove leading/trailing whitespace
                 if (newMessage.isNotEmpty) {
-                  await _updateMessage(messageId, newMessage);
-                  Navigator.pop(context); // Close the dialog
+                  try {
+                    await _updateMessage(messageKey, newMessage);
+                    Navigator.pop(context); // Close the dialog
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Failed to update message: $e')),
+                    );
+                  }
                 }
               },
               child: Text('Save'),
@@ -465,41 +571,33 @@ class _UserMessagePageState extends State<UserMessagePage> {
           ],
         );
       },
-    );
+    ).whenComplete(
+        () => _editController.dispose()); // Dispose of the controller
   }
 
-  void _copyText(String messageId, String text) {
-    Clipboard.setData(ClipboardData(text: text)).then((_) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Message copied to clipboard')),
-      );
-    }).catchError((e) {
-      print('Error copying text: $e');
-    });
-  }
-
-  Future<void> _updateMessage(String messageId, String newMessage) async {
-    final messageRef1 =
-    _userRef.child('${widget.email}/chat/${widget.other_email}/$messageId');
-    final messageRef2 =
-    _userRef.child('${widget.other_email}/chat/${widget.email}/$messageId');
+  Future<void> _updateMessage(String messageKey, String newMessage) async {
+    final messageRef1 = _userRef.child(
+        '${widget.email}/chat/${widget.other_email}/$messageKey/${widget.email}');
+    final messageRef2 = _userRef.child(
+        '${widget.other_email}/chat/${widget.email}/$messageKey/${widget.email}');
 
     try {
       await messageRef1.update({
-        '${widget.email}': newMessage,
+        'content': newMessage,
         'edited': true, // Indicate that the message has been edited
       });
       await messageRef2.update({
-        '${widget.email}': newMessage,
+        'content': newMessage,
         'edited': true,
       });
     } catch (e) {
       print('Error updating message: $e');
+      throw e; // Re-throw the error to handle it in the calling method
     }
   }
 
   void _showDeleteOptions(
-      String messageId, String secondValue, String currentMessage) {
+      String messageKey, String secondValue, String currentMessage) {
     final isCurrentUser = widget.email == secondValue;
 
     showModalBottomSheet(
@@ -516,7 +614,7 @@ class _UserMessagePageState extends State<UserMessagePage> {
                   title: Text('Copy Text'),
                   onTap: () {
                     Navigator.pop(context); // Close the bottom sheet
-                    _copyText(messageId, currentMessage);
+                    _copyText(messageKey, currentMessage);
                   },
                 ),
               if (isCurrentUser &&
@@ -525,12 +623,14 @@ class _UserMessagePageState extends State<UserMessagePage> {
                       '**##document*#@#*storage##**') // Show 'Edit Message' option for the current user
                 ListTile(
                   leading: Icon(Icons.edit),
-                  title: Text('Edit Message'),
+                  title: Text('Edit'),
                   onTap: () {
                     Navigator.pop(context); // Close the bottom sheet
-                    _editMessage(messageId, currentMessage);
+                    _editMessage(
+                        messageKey, currentMessage); // Call the edit function
                   },
                 ),
+
               if (currentMessage != '**##deleted*#@#*message##**') ...[
                 if (isCurrentUser) // Show 'Delete for you' and 'Delete for everyone' options for the current user
                   ListTile(
@@ -538,7 +638,7 @@ class _UserMessagePageState extends State<UserMessagePage> {
                     title: Text('Delete for you'),
                     onTap: () {
                       Navigator.pop(context); // Close the bottom sheet
-                      _deleteMessage(messageId, false);
+                      _deleteMessage(messageKey, false);
                     },
                   ),
                 if (isCurrentUser) // Show 'Delete for everyone' option for the current user
@@ -547,7 +647,7 @@ class _UserMessagePageState extends State<UserMessagePage> {
                     title: Text('Delete for everyone'),
                     onTap: () {
                       Navigator.pop(context); // Close the bottom sheet
-                      _deleteMessage(messageId, true);
+                      _deleteMessage(messageKey, true);
                     },
                   ),
                 if (!isCurrentUser) // Show 'Delete for you' option for the other user
@@ -556,7 +656,7 @@ class _UserMessagePageState extends State<UserMessagePage> {
                     title: Text('Delete for you'),
                     onTap: () {
                       Navigator.pop(context); // Close the bottom sheet
-                      _deleteMessage(messageId, false);
+                      _deleteMessage(messageKey, false);
                     },
                   ),
               ] else if (isCurrentUser) // Only 'Delete for you' option if the message is deleted
@@ -565,7 +665,7 @@ class _UserMessagePageState extends State<UserMessagePage> {
                   title: Text('Delete for you'),
                   onTap: () {
                     Navigator.pop(context); // Close the bottom sheet
-                    _deleteMessage(messageId, false);
+                    _deleteMessage(messageKey, false);
                   },
                 ),
             ],
@@ -644,7 +744,8 @@ class _UserMessagePageState extends State<UserMessagePage> {
             border: Border.all(color: Colors.grey, width: 1),
           ),
           child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 12.0),
+            padding:
+                const EdgeInsets.symmetric(vertical: 8.0, horizontal: 12.0),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -692,7 +793,8 @@ class _UserMessagePageState extends State<UserMessagePage> {
             GestureDetector(
               onTap: () {
                 final profilePage = _buildProfilePage();
-                if (profilePage != null) { // Check if _buildProfilePage returns a valid widget
+                if (profilePage != null) {
+                  // Check if _buildProfilePage returns a valid widget
                   Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => profilePage),
@@ -739,41 +841,47 @@ class _UserMessagePageState extends State<UserMessagePage> {
                 itemCount: _messages.length,
                 itemBuilder: (context, index) {
                   final message = _messages[index];
-                  final messageId = message['id'];
-                  final messageData =
-                  message['messages'] as Map<dynamic, dynamic>?;
+                  final messageKey = message['message_key'];
+                  final senderId = message['sender_id'];
+                  final content = message['content'];
 
-                  if (messageData == null) {
-                    return SizedBox.shrink();
+                  // Check for null content
+                  if (content == null) {
+                    return const SizedBox.shrink(); // Return an empty widget if content is null
                   }
 
-                  bool isCurrentUserMessage =
-                  messageData.containsKey(widget.email);
-                  bool isOtherUserMessage =
-                  messageData.containsKey(widget.other_email);
+                  bool isCurrentUserMessage = widget.email == senderId;
+                  bool isOtherUserMessage = widget.other_email == senderId;
 
-                  final DateTime dateTime = DateTime.fromMillisecondsSinceEpoch(int.parse(messageId)).toLocal();
+                  // Handle potential parsing issues
+                  DateTime dateTime;
+                  try {
+                    dateTime = DateTime.fromMillisecondsSinceEpoch(int.parse(messageKey)).toLocal();
+                  } catch (e) {
+                    // Handle parsing error
+                    print('Error parsing dateTime: $e');
+                    dateTime = DateTime.now(); // Fallback to now
+                  }
+
                   final DateFormat formatter = DateFormat('yyyy-MM-dd H:m:s');
                   final String timeString = formatter.format(dateTime);
 
-                  final firstValue = messageId;
+                  final firstValue = messageKey;
                   final secondValue =
-                  isOtherUserMessage ? widget.other_email : widget.email;
-                  final thirdValue = messageData[secondValue] ?? '';
-                  final isEdited = messageData.containsKey('edited') &&
-                      messageData['edited'] == true;
+                      isOtherUserMessage ? widget.other_email : widget.email;
+                  final thirdValue = content;
 
                   return Padding(
                     padding: const EdgeInsets.symmetric(
                         vertical: 4.0, horizontal: 8.0),
                     child: GestureDetector(
                       onLongPress: () {
-                        _showDeleteOptions(messageId, secondValue, thirdValue);
+                        _showDeleteOptions(messageKey, secondValue, thirdValue);
                       },
                       onTap: () {
                         setState(() {
                           _tappedCardIndex =
-                          _tappedCardIndex == index ? null : index;
+                              _tappedCardIndex == index ? null : index;
                         });
                         print('Tapped index: $_tappedCardIndex');
                       },
@@ -785,11 +893,14 @@ class _UserMessagePageState extends State<UserMessagePage> {
                           if (!isCurrentUserMessage)
                             GestureDetector(
                               onTap: () {
-                                final Widget profilePage = _buildProfilePage(); // No need to check for null if _buildProfilePage always returns a widget
-                                if (profilePage is Widget) { // Ensure that it returns a valid widget
+                                final Widget profilePage =
+                                    _buildProfilePage(); // No need to check for null if _buildProfilePage always returns a widget
+                                if (profilePage is Widget) {
+                                  // Ensure that it returns a valid widget
                                   Navigator.push(
                                     context,
-                                    MaterialPageRoute(builder: (context) => profilePage),
+                                    MaterialPageRoute(
+                                        builder: (context) => profilePage),
                                   );
                                 }
                               },
@@ -797,7 +908,9 @@ class _UserMessagePageState extends State<UserMessagePage> {
                                 backgroundImage: _profilePicUrl.isNotEmpty
                                     ? NetworkImage(_profilePicUrl)
                                     : null,
-                                child: _profilePicUrl.isEmpty ? Icon(Icons.person) : null,
+                                child: _profilePicUrl.isEmpty
+                                    ? Icon(Icons.person)
+                                    : null,
                               ),
                             ),
                           SizedBox(width: 8),
@@ -819,7 +932,7 @@ class _UserMessagePageState extends State<UserMessagePage> {
                                 if (thirdValue == '**##image*#@#*storage##**')
                                   FutureBuilder<String>(
                                     future:
-                                    _getImageUrl(firstValue, secondValue),
+                                        _getImageUrl(firstValue, secondValue),
                                     builder: (context, snapshot) {
                                       if (snapshot.connectionState ==
                                           ConnectionState.waiting) {
@@ -827,6 +940,7 @@ class _UserMessagePageState extends State<UserMessagePage> {
                                       } else if (snapshot.hasError) {
                                         return Text('Error loading image');
                                       } else if (snapshot.hasData) {
+                                        //return Text(firstValue.toString() + "--" + secondValue.toString());
                                         return GestureDetector(
                                           onTap: () {
                                             Navigator.push(
@@ -834,21 +948,21 @@ class _UserMessagePageState extends State<UserMessagePage> {
                                               MaterialPageRoute(
                                                 builder: (context) =>
                                                     FullScreenImagePage2(
-                                                      imageUrl: snapshot.data!,
-                                                    ),
+                                                  imageUrl: snapshot.data!,
+                                                ),
                                               ),
                                             );
                                           },
                                           child: ClipRRect(
                                             borderRadius:
-                                            BorderRadius.circular(12.0),
+                                                BorderRadius.circular(12.0),
                                             child: Container(
                                               height: 100,
                                               width: 150,
                                               decoration: BoxDecoration(
                                                 color: Colors.black,
                                                 borderRadius:
-                                                BorderRadius.circular(12.0),
+                                                    BorderRadius.circular(12.0),
                                                 border: Border.all(
                                                     color: Colors.grey,
                                                     width: 1),
@@ -865,21 +979,20 @@ class _UserMessagePageState extends State<UserMessagePage> {
                                       }
                                     },
                                   )
-                                else if (thirdValue ==
-                                    '**##document*#@#*storage##**')
+                                else if (thirdValue == '**##document*#@#*storage##**')
                                   FutureBuilder<String>(
-                                    future: _getDocumentUrl(
-                                        firstValue, secondValue),
+                                    future: _getDocumentUrl(firstValue, secondValue),
                                     builder: (context, snapshot) {
-                                      if (snapshot.connectionState ==
-                                          ConnectionState.waiting) {
+                                      if (snapshot.connectionState == ConnectionState.waiting) {
                                         return CircularProgressIndicator();
                                       } else if (snapshot.hasError) {
+                                        // return Text(firstValue.toString() + "--" + secondValue.toString());
                                         return Text('Error loading document');
                                       } else if (snapshot.hasData) {
+                                        // Build document display widget
                                         return _buildDocumentWidget(
                                           snapshot.data!,
-                                          secondValue == widget.email,
+                                          secondValue == widget.email, // Check if the sender is the current user
                                         );
                                       } else {
                                         return SizedBox.shrink();
@@ -887,65 +1000,51 @@ class _UserMessagePageState extends State<UserMessagePage> {
                                     },
                                   )
                                 else if (thirdValue ==
-                                      '**##deleted*#@#*message##**')
-                                    Card(
-                                      color: Colors.transparent,
-                                      elevation: 0,
-                                      child: Container(
-                                        padding: const EdgeInsets.all(8.0),
-                                        child: Text(
-                                          'This message was deleted',
-                                          style: TextStyle(
-                                            fontStyle: FontStyle.italic,
-                                            color: Colors.grey,
-                                          ),
+                                    '**##deleted*#@#*message##**')
+                                  Card(
+                                    color: Colors.transparent,
+                                    elevation: 0,
+                                    child: Container(
+                                      padding: const EdgeInsets.all(8.0),
+                                      child: Text(
+                                        'This message was deleted',
+                                        style: TextStyle(
+                                          fontStyle: FontStyle.italic,
+                                          color: Colors.grey,
                                         ),
                                       ),
-                                    )
-                                  else
+                                    ),
+                                  )
+                                else
                                     Card(
-                                      color: isCurrentUserMessage
-                                          ? color_1
-                                          : Colors.white,
+                                      color: isCurrentUserMessage ? color_1 : Colors.white,
                                       elevation: 4,
                                       child: ConstrainedBox(
                                         constraints: BoxConstraints(
-                                          maxWidth:
-                                          MediaQuery.of(context).size.width *
-                                              0.5,
+                                          maxWidth: MediaQuery.of(context).size.width * 0.5,
                                         ),
                                         child: Container(
                                           padding: const EdgeInsets.all(8.0),
                                           child: Column(
-                                            crossAxisAlignment:
-                                            CrossAxisAlignment.start,
+                                            crossAxisAlignment: CrossAxisAlignment.start,
                                             children: [
                                               Text(
                                                 thirdValue,
                                                 style: TextStyle(
-                                                  color: isCurrentUserMessage
-                                                      ? Colors.white
-                                                      : Colors.black,
+                                                  color: isCurrentUserMessage ? Colors.white : Colors.black,
                                                 ),
                                               ),
-                                              if (isEdited)
+                                              if (isEdited) // Check if the message is edited
                                                 Align(
-                                                  alignment:
-                                                  Alignment.bottomRight,
+                                                  alignment: Alignment.bottomRight,
                                                   child: Padding(
-                                                    padding:
-                                                    const EdgeInsets.only(
-                                                        top: 4.0),
+                                                    padding: const EdgeInsets.only(top: 4.0),
                                                     child: Text(
                                                       '(edited)',
                                                       style: TextStyle(
                                                         fontSize: 12,
-                                                        fontStyle:
-                                                        FontStyle.italic,
-                                                        color: secondValue ==
-                                                            widget.email
-                                                            ? Colors.white
-                                                            : Colors.grey,
+                                                        fontStyle: FontStyle.italic,
+                                                        color: secondValue == widget.email ? Colors.white : Colors.grey,
                                                       ),
                                                     ),
                                                   ),
@@ -969,7 +1068,7 @@ class _UserMessagePageState extends State<UserMessagePage> {
             if (_selectedDocument != null)
               Padding(
                 padding:
-                const EdgeInsets.symmetric(vertical: 4.0, horizontal: 20),
+                    const EdgeInsets.symmetric(vertical: 4.0, horizontal: 20),
                 child: Row(
                   children: [
                     Expanded(
@@ -983,7 +1082,7 @@ class _UserMessagePageState extends State<UserMessagePage> {
                       onPressed: () {
                         setState(() {
                           _selectedDocument =
-                          null; // Remove the selected document
+                              null; // Remove the selected document
                         });
                       },
                     ),
