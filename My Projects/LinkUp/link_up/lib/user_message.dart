@@ -156,24 +156,34 @@ class _UserMessagePageState extends State<UserMessagePage> {
         final data = snapshot.snapshot.value as Map<dynamic, dynamic>?;
 
         if (data != null) {
-          // Extract sender ID, content, and edited flag
+          print('Raw data from Firebase: $data'); // Debug print
+
           String senderId = '';
           String? content;
-          bool isEdited = data['edited'] ?? false; // Default to false if not present
+          bool isEdited = false;
 
-          for (var key in data.keys) {
-            if (key != 'content' && key != 'edited') {
-              senderId = key;
-              content = data[key]?['content'] as String?;
+          // Adjust parsing logic based on structure
+          if (data.containsKey('content')) {
+            // Flat structure
+            content = data['content'] as String?;
+            isEdited = data['edited'] ?? false;
+          } else {
+            // Nested structure
+            for (var key in data.keys) {
+              if (key != 'content' && key != 'edited') {
+                senderId = key;
+                content = data[key]?['content'] as String?;
+                isEdited = data[key]?['edited'] ?? false;
+              }
             }
           }
 
           setState(() {
             _messages.add({
-              'message_key': messageKey, // Use messageKey instead of time_id
+              'message_key': messageKey,
               'sender_id': senderId,
               'content': content ?? '',
-              'edited': isEdited,  // Add the edited flag for each message
+              'edited': isEdited,
             });
             _scrollToBottom();
           });
@@ -187,57 +197,63 @@ class _UserMessagePageState extends State<UserMessagePage> {
 
     // Listen for message updates
     chatRef.onChildChanged.listen((event) async {
-      final messageKey = event.snapshot.key;
-      final chatRef1 = chatRef.child('$messageKey');
+      final messageKey = event.snapshot.key; // The push() key of the message
+      final chatRef1 = chatRef.child('$messageKey'); // Reference to the updated message
 
       try {
+        // Fetch the updated data
         final snapshot = await chatRef1.once();
         final data = snapshot.snapshot.value as Map<dynamic, dynamic>?;
 
         if (data != null) {
-          // Extract sender ID, content, and edited flag
+          print('Raw data for updated message: $data'); // Debugging the structure
+
           String senderId = '';
           String? content;
-          bool isEdited = data['edited'] ?? false; // Default to false if not present
+          bool isEdited = false;
 
-          for (var key in data.keys) {
-            if (key != 'content' && key != 'edited') {
-              senderId = key;
-              content = data[key]?['content'] as String?;
+          // Adjust parsing logic based on data structure
+          if (data.containsKey('content')) {
+            // Flat structure
+            content = data['content'] as String?;
+            isEdited = data['edited'] ?? false;
+          } else {
+            // Nested structure
+            for (var key in data.keys) {
+              if (key != 'content' && key != 'edited') {
+                senderId = key;
+                content = data[key]?['content'] as String?;
+                isEdited = data[key]?['edited'] ?? false;
+              }
             }
           }
 
           print(
               'Message updated: message_key=$messageKey, sender_id=$senderId, content=$content, isEdited=$isEdited');
 
+          // Update the message in the `_messages` list
           setState(() {
-            final index = _messages.indexWhere((msg) => msg['message_key'] == messageKey);
+            final index =
+            _messages.indexWhere((msg) => msg['message_key'] == messageKey);
+
             if (index != -1) {
+              // Replace the old message with the updated one
               _messages[index] = {
                 'message_key': messageKey,
                 'sender_id': senderId,
                 'content': content ?? '',
-                'edited': isEdited,  // Update the edited flag for the specific message
+                'edited': isEdited, // Update the edited flag
               };
+            } else {
+              print('Updated message not found in the list');
             }
           });
         } else {
-          print('No snapshot value exists for updated message ID: $messageKey');
+          print('No data exists for updated message ID: $messageKey');
         }
       } catch (e) {
         print('Error updating message content: $e');
       }
-    });
-
-    // Listen for message deletions
-    chatRef.onChildRemoved.listen((event) {
-      final messageKey = event.snapshot.key;
-
-      print('Message removed: message_key=$messageKey');
-
-      setState(() {
-        _messages.removeWhere((msg) => msg['message_key'] == messageKey);
-      });
     });
   }
 
@@ -844,6 +860,7 @@ class _UserMessagePageState extends State<UserMessagePage> {
                   final messageKey = message['message_key'];
                   final senderId = message['sender_id'];
                   final content = message['content'];
+                  final isEdited = message['edited'];
 
                   // Check for null content
                   if (content == null) {
@@ -957,8 +974,8 @@ class _UserMessagePageState extends State<UserMessagePage> {
                                             borderRadius:
                                                 BorderRadius.circular(12.0),
                                             child: Container(
-                                              height: 100,
-                                              width: 150,
+                                              height: 120,
+                                              width: 200,
                                               decoration: BoxDecoration(
                                                 color: Colors.black,
                                                 borderRadius:
@@ -986,13 +1003,15 @@ class _UserMessagePageState extends State<UserMessagePage> {
                                       if (snapshot.connectionState == ConnectionState.waiting) {
                                         return CircularProgressIndicator();
                                       } else if (snapshot.hasError) {
-                                        // return Text(firstValue.toString() + "--" + secondValue.toString());
                                         return Text('Error loading document');
                                       } else if (snapshot.hasData) {
-                                        // Build document display widget
-                                        return _buildDocumentWidget(
-                                          snapshot.data!,
-                                          secondValue == widget.email, // Check if the sender is the current user
+                                        // Build document display widget with fixed width of 200
+                                        return Container(
+                                          width: 200,  // Set width to 200
+                                          child: _buildDocumentWidget(
+                                            snapshot.data!,
+                                            secondValue == widget.email, // Check if the sender is the current user
+                                          ),
                                         );
                                       } else {
                                         return SizedBox.shrink();
@@ -1034,13 +1053,13 @@ class _UserMessagePageState extends State<UserMessagePage> {
                                                   color: isCurrentUserMessage ? Colors.white : Colors.black,
                                                 ),
                                               ),
-                                              if (isEdited) // Check if the message is edited
+                                              if (isEdited)
                                                 Align(
                                                   alignment: Alignment.bottomRight,
                                                   child: Padding(
-                                                    padding: const EdgeInsets.only(top: 4.0),
+                                                    padding: const EdgeInsets.all(0.0),
                                                     child: Text(
-                                                      '(edited)',
+                                                      isEdited ? '(edited)' : '', // Display `(edited)` or keep empty space
                                                       style: TextStyle(
                                                         fontSize: 12,
                                                         fontStyle: FontStyle.italic,
@@ -1048,7 +1067,7 @@ class _UserMessagePageState extends State<UserMessagePage> {
                                                       ),
                                                     ),
                                                   ),
-                                                ),
+                                              ),
                                             ],
                                           ),
                                         ),
