@@ -49,6 +49,7 @@ class _UserMessagePageState extends State<UserMessagePage> {
     _fetchUserData();
     _listenToMessages();
     _seenMessages();
+    _setupMessageListener();
     _checkFriendStatus();
     _checkBlockStatus();
     _fetchUserColor(); // Fetch the color for other_email
@@ -73,60 +74,58 @@ class _UserMessagePageState extends State<UserMessagePage> {
 
         print('\n=== Checking Messages for Seen Update ===');
         for (final messageId in messages.keys) {
-          final messageRef = _userRef.child('${widget.other_email}/chat/${widget.email}/$messageId');
-          final snapshot = await messageRef.once();
-          final data = snapshot.snapshot.value as Map<dynamic, dynamic>?;
+          final messageRef = FirebaseDatabase.instance.ref('users/$otherUserEmail/chat/$currentUserEmail/$messageId');
 
-          if (data != null && data.isNotEmpty) {
-            final senderId = data.keys.first;
+          // Use a real-time listener to track changes to the message status
+          messageRef.onChildChanged.listen((event) async {
+            final messageData = event.snapshot.value as Map<dynamic, dynamic>?;
+            if (messageData != null) {
+              final senderId = messageData.keys.first;
 
-            print('First child key: $senderId');
-            if (senderId == widget.other_email) {
-              final nowTime = DateFormat('yyyy-MM-dd H:m:s').format(DateTime.now());
+              if (senderId == widget.other_email) {
+                final status = messageData[senderId]['status'] as String?;
 
-              // Check and update the status for `messageRef`
-              try {
-                final snapshot = await messageRef.child(senderId).child('status').get();
-                if (snapshot.exists && snapshot.value == 'Delivered') {
+                if (status == 'Delivered') {
+                  final nowTime = DateFormat('yyyy-MM-dd H:m:s').format(DateTime.now());
+
+                  // Update both sides of the chat to mark the message as 'Seen'
                   await messageRef.child(senderId).update({
                     'seenTime': nowTime,
                     'status': 'Seen',
                   });
-                  print('Updated seenTime and status to "Seen" for senderId: $senderId in messageRef.');
-                } else {
-                  print('Status is not "Delivered" for senderId: $senderId in messageRef.');
-                }
-              } catch (e) {
-                print('Error checking or updating status in messageRef: $e');
-              }
 
-              // Check and update the status for `_userRef`
-              try {
-                final snapshot = await _userRef
-                    .child('${widget.email}/chat/${widget.other_email}/$messageId')
-                    .child(senderId)
-                    .child('status')
-                    .get();
-
-                if (snapshot.exists && snapshot.value == 'Delivered') {
-                  await _userRef
-                      .child('${widget.email}/chat/${widget.other_email}/$messageId')
-                      .child(senderId)
+                  await FirebaseDatabase.instance.ref('users/$currentUserEmail/chat/$otherUserEmail/$messageId/$senderId')
                       .update({
                     'seenTime': nowTime,
                     'status': 'Seen',
                   });
-                  print('Updated seenTime and status to "Seen" for senderId: $senderId in _userRef.');
-                } else {
-                  print('Status is not "Delivered" for senderId: $senderId in _userRef.');
+
+                  print('Updated seenTime and status to "Seen" for senderId: $senderId.');
                 }
-              } catch (e) {
-                print('Error checking or updating status in _userRef: $e');
+
+                if (status == 'Sent') {
+                  final nowTime = DateFormat('yyyy-MM-dd H:m:s').format(DateTime.now());
+
+                  // Update both sides of the chat to mark the message as 'Seen'
+                  await messageRef.child(senderId).update({
+                    'deliveredTime': nowTime,
+                    'seenTime': nowTime,
+                    'status': 'Seen',
+                  });
+
+                  await FirebaseDatabase.instance.ref('users/$currentUserEmail/chat/$otherUserEmail/$messageId/$senderId')
+                      .update({
+                    'deliveredTime': nowTime,
+                    'seenTime': nowTime,
+                    'status': 'Seen',
+                  });
+
+                  print('Updated seenTime and status to "Seen" for senderId: $senderId.');
+                }
               }
+
             }
-        } else {
-            print('No data or empty message for $messageId');
-          }
+          });
         }
       } else {
         print('No messages found for the chat.');
@@ -136,6 +135,31 @@ class _UserMessagePageState extends State<UserMessagePage> {
     }
   }
 
+  void _setupMessageListener() {
+    final String currentUserEmail = widget.email;
+    final String otherUserEmail = widget.other_email;
+
+    // Listen for changes to the messages
+    final chatRef = FirebaseDatabase.instance.ref()
+        .child('users')
+        .child(otherUserEmail)
+        .child('chat')
+        .child(currentUserEmail);
+
+    chatRef.onChildChanged.listen((event) {
+      final messageData = event.snapshot.value as Map<dynamic, dynamic>?;
+      if (messageData != null) {
+        final messageId = event.snapshot.key;
+        final senderId = messageData.keys.first;
+
+        if (messageData[senderId]['status'] == 'Seen') {
+          // You can update your chat UI accordingly here
+          print('Message $messageId marked as "Seen" for sender $senderId.');
+          // Update your UI or message list here
+        }
+      }
+    });
+  }
 
   void _fetchUserColor() {
     DatabaseReference colorRef =
@@ -245,6 +269,7 @@ class _UserMessagePageState extends State<UserMessagePage> {
           bool isEdited = false;
           String? sentTime;
           String status = 'Sent';
+          String? deliveredTime;
           String? seenTime;
 
           if (data.containsKey('content')) {
@@ -253,17 +278,20 @@ class _UserMessagePageState extends State<UserMessagePage> {
             isEdited = data['edited'] ?? false;
             sentTime = data['sentTime'] as String?;
             status = data['status'] ?? 'Sent';
+            deliveredTime = data['deliveredTime'] as String?;
             seenTime = data['seenTime'] as String?;
 
           } else {
             // Nested structure
             for (var key in data.keys) {
-              if (key != 'content' && key != 'edited' && key != 'sentTime' && key != 'status' && key != 'seenTime') {
+              if (key != 'content' && key != 'edited' && key != 'sentTime' && key != 'status'
+                  && key != 'seenTime' && key != 'deliveredTime') {
                 senderId = key;
                 content = data[key]?['content'] as String?;
                 isEdited = data[key]?['edited'] ?? false;
                 sentTime = data[key]?['sentTime'] as String?;
                 status = data[key]?['status'] ?? 'Sent';
+                deliveredTime = data[key]?['deliveredTime'] as String?;
                 seenTime = data[key]?['seenTime'] as String?;
               }
             }
@@ -277,6 +305,7 @@ class _UserMessagePageState extends State<UserMessagePage> {
               'edited': isEdited,
               'sentTime': sentTime ?? '',
               'status': status,
+              'deliveredTime': deliveredTime ?? '',
               'seenTime': seenTime ?? '',
             });
             _scrollToBottom();
@@ -307,6 +336,7 @@ class _UserMessagePageState extends State<UserMessagePage> {
           bool isEdited = false;
           String? sentTime;
           String status = 'Sent';
+          String? deliveredTime;
           String? seenTime;
 
           if (data.containsKey('content')) {
@@ -315,6 +345,7 @@ class _UserMessagePageState extends State<UserMessagePage> {
             isEdited = data['edited'] ?? false;
             sentTime = data['sentTime'] as String?;
             status = data['status'] ?? 'Sent';
+            deliveredTime = data['deliveredTime'] as String?;
             seenTime = data['seenTime'] as String?;
 
           } else {
@@ -327,6 +358,7 @@ class _UserMessagePageState extends State<UserMessagePage> {
                 isEdited = data[key]?['edited'] ?? false;
                 sentTime = data[key]?['sentTime'] as String?;
                 status = data[key]?['status'] ?? 'Sent';
+                deliveredTime = data[key]?['deliveredTime'] as String?;
                 seenTime = data[key]?['seenTime'] as String?;
               }
             }
@@ -349,6 +381,7 @@ class _UserMessagePageState extends State<UserMessagePage> {
                 'edited': isEdited,
                 'sentTime': sentTime ?? '',
                 'status': status,
+                'deliveredTime': deliveredTime ?? '',
                 'seenTime': seenTime ?? '',
               };
             } else {
@@ -731,7 +764,8 @@ class _UserMessagePageState extends State<UserMessagePage> {
   }
 
   void _showDeleteOptions(
-      String messageKey, String secondValue, String currentMessage, String messageValue, String sentTime, String seenTime) {
+      String messageKey, String secondValue, String currentMessage, String messageValue,
+      String sentTime, String deliveredTime, String seenTime) {
     final isCurrentUser = widget.email == secondValue;
 
     showModalBottomSheet(
@@ -857,6 +891,27 @@ class _UserMessagePageState extends State<UserMessagePage> {
                               padding: const EdgeInsets.only(left: 32),
                               child: Text(formatTime(sentTime) ?? 'Unknown'),
                             ),
+
+                            if (deliveredTime != null && deliveredTime.isNotEmpty) ...[
+                              SizedBox(height: 16), // Spacing for `Seen` time if it exists
+                              Row(
+                                children: [
+                                  Icon(Icons.visibility,),
+                                  SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      'Delivered:',
+                                      style: TextStyle(fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.only(left: 32),
+                                child: Text(formatTime(deliveredTime!)),
+                              ),
+                            ],
+
                             if (seenTime != null && seenTime.isNotEmpty) ...[
                               SizedBox(height: 16), // Spacing for `Seen` time if it exists
                               Row(
@@ -1105,6 +1160,7 @@ class _UserMessagePageState extends State<UserMessagePage> {
                   final sentTime = message['sentTime'];
                   final isEdited = message['edited'];
                   final status = message['status'];
+                  final deliveredTime = message['deliveredTime'];
                   final seenTime = message['seenTime'];
 
                   String formattedTime = formatTime(sentTime);
@@ -1139,7 +1195,8 @@ class _UserMessagePageState extends State<UserMessagePage> {
                         vertical: 4.0, horizontal: 8.0),
                     child: GestureDetector(
                       onLongPress: () {
-                        _showDeleteOptions(messageKey, secondValue, thirdValue, messageValue, sentTime, seenTime);
+                        _showDeleteOptions(messageKey, secondValue, thirdValue, messageValue,
+                            sentTime, deliveredTime, seenTime);
                       },
                       onTap: () {
                         setState(() {

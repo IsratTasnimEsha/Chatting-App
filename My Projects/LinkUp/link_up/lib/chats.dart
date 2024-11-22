@@ -41,7 +41,44 @@ class _ChatsPageState extends State<ChatsPage> with WidgetsBindingObserver {
   }
 
   void _deliveredMessages() async {
+    final chatRef1 = FirebaseDatabase.instance.ref("users/${widget.email}/chat");
+    final chatSnapshot = await chatRef1.get();
 
+    if (chatSnapshot.exists) {
+      for (final chatChild in chatSnapshot.children) {
+        final otherEmail = chatChild.key;
+
+        for (final messageChild in chatChild.children) {
+          final messageId = messageChild.key;
+
+          for (final messageKey in messageChild.children) {
+
+            final senderId = messageKey.key!.replaceAll('_dot_', '.').replaceAll('_at_', '@');
+            final messageData = messageKey.value as Map<dynamic, dynamic>?;
+
+            if (messageData != null) {
+              final status = messageData['status'] as String?; // Access status safely
+
+              if (senderId != widget.email && status == 'Sent') {
+                final nowTime = DateFormat('yyyy-MM-dd H:m:s').format(DateTime.now());
+                await messageKey.ref.update({
+                  'status': 'Delivered',
+                  'deliveredTime': nowTime,
+                });
+
+                final formattedSenderId = senderId.replaceAll('.', '_dot_').replaceAll('@', '_at_');
+                await FirebaseDatabase.instance.ref("users/$otherEmail/chat/${widget.email}/$messageId/$formattedSenderId")
+                    .update({
+                      'status': 'Delivered',
+                      'deliveredTime': nowTime,
+                });
+
+              }
+            }
+          }
+        }
+      }
+    }
   }
 
   void _fetchUserColor() {
