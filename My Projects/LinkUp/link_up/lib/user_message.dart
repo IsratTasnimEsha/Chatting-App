@@ -81,26 +81,50 @@ class _UserMessagePageState extends State<UserMessagePage> {
             final senderId = data.keys.first;
 
             print('First child key: $senderId');
-            if(senderId == widget.other_email) {
+            if (senderId == widget.other_email) {
               final nowTime = DateFormat('yyyy-MM-dd H:m:s').format(DateTime.now());
 
+              // Check and update the status for `messageRef`
               try {
-                await messageRef.child(senderId).update({
-                  'seenTime': nowTime,
-                  'status': 'Seen',
-                });
-                print('Updated seenTime and status to "Seen" for senderId: $senderId');
-              } catch (e) {
-                print('Error updating seenTime and status: $e');
-              }
-
-              await _userRef.child('${widget.email}/chat/${widget.other_email}/$messageId')
-                  .child(senderId).update({
+                final snapshot = await messageRef.child(senderId).child('status').get();
+                if (snapshot.exists && snapshot.value == 'Delivered') {
+                  await messageRef.child(senderId).update({
                     'seenTime': nowTime,
                     'status': 'Seen',
-              });
+                  });
+                  print('Updated seenTime and status to "Seen" for senderId: $senderId in messageRef.');
+                } else {
+                  print('Status is not "Delivered" for senderId: $senderId in messageRef.');
+                }
+              } catch (e) {
+                print('Error checking or updating status in messageRef: $e');
+              }
+
+              // Check and update the status for `_userRef`
+              try {
+                final snapshot = await _userRef
+                    .child('${widget.email}/chat/${widget.other_email}/$messageId')
+                    .child(senderId)
+                    .child('status')
+                    .get();
+
+                if (snapshot.exists && snapshot.value == 'Delivered') {
+                  await _userRef
+                      .child('${widget.email}/chat/${widget.other_email}/$messageId')
+                      .child(senderId)
+                      .update({
+                    'seenTime': nowTime,
+                    'status': 'Seen',
+                  });
+                  print('Updated seenTime and status to "Seen" for senderId: $senderId in _userRef.');
+                } else {
+                  print('Status is not "Delivered" for senderId: $senderId in _userRef.');
+                }
+              } catch (e) {
+                print('Error checking or updating status in _userRef: $e');
+              }
             }
-          } else {
+        } else {
             print('No data or empty message for $messageId');
           }
         }

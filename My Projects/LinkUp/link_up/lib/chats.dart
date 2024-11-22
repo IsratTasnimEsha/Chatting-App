@@ -34,9 +34,14 @@ class _ChatsPageState extends State<ChatsPage> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     _initListeners();
+    _deliveredMessages();
     WidgetsBinding.instance.addObserver(this);
     setStatus("Online");
     _fetchUserColor();
+  }
+
+  void _deliveredMessages() async {
+
   }
 
   void _fetchUserColor() {
