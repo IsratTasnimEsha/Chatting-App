@@ -1,6 +1,7 @@
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:shimmer/shimmer.dart';
 
 Color color_1 = Colors.blue;
@@ -21,6 +22,9 @@ class _ChatsPageState extends State<ChatsPage> with WidgetsBindingObserver {
   Map<String, String> _userNames = {};
   Map<String, String?> _profilePics = {};
   Map<String, String?> _activeStatuses = {};
+  Map<String, String?> _lastMessages = {};
+  Map<String, String?> _sentTimes = {};
+  Map<String, String?> _messageStatuses = {};
   Set<String> _friends = {};
   String _searchQuery = '';
   bool _isLoading = true;
@@ -96,6 +100,9 @@ class _ChatsPageState extends State<ChatsPage> with WidgetsBindingObserver {
         final Map<String, String> newUserNames = {};
         final Map<String, String?> newProfilePics = {};
         final Map<String, String?> newActiveStatuses = {};
+        final Map<String, String?> newLastMessages = {};
+        final Map<String, String?> newSentTimes = {};
+        final Map<String, String?> newMessageStatuses = {};
 
         _friends.clear();
 
@@ -111,9 +118,61 @@ class _ChatsPageState extends State<ChatsPage> with WidgetsBindingObserver {
             final profilePicUrl = await _loadProfilePic(friendEmail);
             final status = userSnapshot.child('activeStatus').value?.toString();
 
+            // Fetch the last message for this friend
+            final lastMessageSnapshot = await chatRef
+                .child(friendEmail)
+                .orderByKey()
+                .limitToLast(1)
+                .get();
+
+            String? lastMessageContent, sentTimeContent, messageStatusContent;
+
+            if (lastMessageSnapshot.exists) {
+              // Access the first child in the snapshot
+              final lastMessage = lastMessageSnapshot.children.first;
+
+              // Access the 'content' field of that first child
+              lastMessageContent = lastMessage.child('content').value?.toString();
+              sentTimeContent = lastMessage.child('sentTime').value?.toString();
+              messageStatusContent = lastMessage.child('status').value?.toString();
+            }
+
+            if (lastMessageSnapshot.exists) {
+              final lastMessage = lastMessageSnapshot.children.first;
+
+              String? firstKey;
+              if (lastMessage.value is Map) {
+                firstKey = (lastMessage.value as Map).keys.first.toString();
+              }
+
+              lastMessageContent = lastMessage
+                  .child(firstKey.toString().replaceAll('.', '_dot_').replaceAll('@', '_at_'))
+                  .child('content')
+                  .value
+                  ?.toString();
+
+              if (firstKey == widget.email) {
+                lastMessageContent = 'You: ' + lastMessageContent.toString();
+              }
+
+              sentTimeContent = lastMessage
+                  .child(firstKey.toString().replaceAll('.', '_dot_').replaceAll('@', '_at_'))
+                  .child('sentTime')
+                  .value
+                  ?.toString();
+              messageStatusContent = lastMessage
+                  .child(firstKey.toString().replaceAll('.', '_dot_').replaceAll('@', '_at_'))
+                  .child('status')
+                  .value
+                  ?.toString();
+            }
+
             newUserNames[friendEmail] = name;
             newProfilePics[friendEmail] = profilePicUrl;
             newActiveStatuses[friendEmail] = status;
+            newLastMessages[friendEmail] = lastMessageContent;
+            newSentTimes[friendEmail] = sentTimeContent;
+            newMessageStatuses[friendEmail] = messageStatusContent;
           }
         }
 
@@ -121,6 +180,9 @@ class _ChatsPageState extends State<ChatsPage> with WidgetsBindingObserver {
           _userNames = newUserNames;
           _profilePics = newProfilePics;
           _activeStatuses = newActiveStatuses;
+          _lastMessages = newLastMessages;
+          _sentTimes = newSentTimes;
+          _messageStatuses = newMessageStatuses;
           _totalRequests = _friends.length;
           _isLoading = false;
         });
@@ -129,6 +191,9 @@ class _ChatsPageState extends State<ChatsPage> with WidgetsBindingObserver {
           _userNames.clear();
           _profilePics.clear();
           _activeStatuses.clear();
+          _lastMessages.clear();
+          _sentTimes.clear();
+          _messageStatuses.clear();
           _friends.clear();
           _totalRequests = 0;
           _isLoading = false;
@@ -197,11 +262,51 @@ class _ChatsPageState extends State<ChatsPage> with WidgetsBindingObserver {
             mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
+                leading: const Icon(Icons.volume_off),
+                title: const Text('Mute'),
+                onTap: () {
+                  Navigator.pop(context); // Close bottom sheet
+                  _showMuteConfirmationDialog(otherEmail); // Show confirmation dialog for mute
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.visibility_off),
+                title: const Text('Hide Conversation'),
+                onTap: () {
+                  Navigator.pop(context); // Close bottom sheet
+                  _showHideConfirmationDialog(otherEmail); // Show confirmation dialog
+                },
+              ),
+              ListTile(
                 leading: const Icon(Icons.delete),
                 title: const Text('Delete Conversation'),
                 onTap: () {
                   Navigator.pop(context); // Close bottom sheet
-                  _showConfirmationDialog(otherEmail); // Show confirmation dialog
+                  _showDeleteConfirmationDialog(otherEmail); // Show confirmation dialog
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.lock),
+                title: const Text('Lock Conversation'),
+                onTap: () {
+                  Navigator.pop(context); // Close bottom sheet
+                  _showLockConfirmationDialog(otherEmail); // Show confirmation dialog
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.markunread),
+                title: const Text('Mark As Unread'),
+                onTap: () {
+                  Navigator.pop(context); // Close bottom sheet
+                  _showMarkAsUnreadDialog(otherEmail); // Show confirmation dialog for mark as unread
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.access_time),
+                title: const Text('Disappearing Messages'),
+                onTap: () {
+                  Navigator.pop(context); // Close bottom sheet
+                  _showDisappearMessageDialog(otherEmail); // Show confirmation dialog for disappearing message
                 },
               ),
             ],
@@ -211,7 +316,15 @@ class _ChatsPageState extends State<ChatsPage> with WidgetsBindingObserver {
     );
   }
 
-  void _showConfirmationDialog(String otherEmail) {
+  void _showMuteConfirmationDialog(String otherEmail) {
+
+  }
+
+  void _showHideConfirmationDialog(String otherEmail) {
+
+  }
+
+  void _showDeleteConfirmationDialog(String otherEmail) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -245,6 +358,70 @@ class _ChatsPageState extends State<ChatsPage> with WidgetsBindingObserver {
       },
     );
   }
+
+  void _showLockConfirmationDialog(String otherEmail) {
+
+  }
+
+  Future<void> _showMarkAsUnreadDialog(String otherEmail) async {
+    final chatRef = FirebaseDatabase.instance.ref("users/${widget.email}/chat");
+
+    // Fetch the last message for the conversation with the other user
+    final lastMessageSnapshot = await chatRef.child(otherEmail).orderByKey().limitToLast(1).get();
+
+    if (lastMessageSnapshot.exists) {
+      // Access the first child in the snapshot (last message)
+      final lastMessage = lastMessageSnapshot.children.first;
+
+      // Get the key of the sender (the other user's email)
+      String? firstKey;
+      if (lastMessage.value is Map) {
+        firstKey = (lastMessage.value as Map).keys.first.toString();
+      }
+
+      if (firstKey != widget.email) {
+        // Update the 'status' field to "Delivered"
+        await chatRef.child(otherEmail)
+            .child(lastMessage.key!)
+            .child(firstKey.toString().replaceAll('.', '_dot_').replaceAll('@', '_at_'))
+            .child('status')
+            .set('Delivered');
+      }
+
+      // Optionally, you can update the local state if necessary
+      setState(() {
+        _messageStatuses[otherEmail] = 'Delivered'; // Update status for the UI
+      });
+    }
+  }
+
+  void _showDisappearMessageDialog(String otherEmail) {
+
+  }
+
+  String formatSentTime(String sentTime) {
+    try {
+      // Parse the input string to a DateTime object
+      DateTime dateTime = DateFormat("yyyy-MM-dd H:m:s").parse(sentTime);
+      DateTime now = DateTime.now();
+
+      if (DateFormat("yyyy-MM-dd").format(dateTime) == DateFormat("yyyy-MM-dd").format(now)) {
+        // If the date is the same as today, show only the time
+        return DateFormat("hh:mm a").format(dateTime);
+      } else if (dateTime.year == now.year) {
+        // If the year is the same, exclude the year
+        return DateFormat("MMM dd").format(dateTime);
+      } else {
+        // Otherwise, show the full date and time
+        return DateFormat("MMM dd, yyyy").format(dateTime);
+      }
+    } catch (e) {
+      // Handle parsing error if input is invalid
+      print("Error formatting date: $e");
+      return "";
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -354,6 +531,11 @@ class _ChatsPageState extends State<ChatsPage> with WidgetsBindingObserver {
                 final name = filteredUserNames[index].value;
                 final profilePicUrl = _profilePics[email];
                 final status = _activeStatuses[email];
+                final lastMessage = _lastMessages[email];
+                final sentTime = _sentTimes[email];
+                final messageStatus = _messageStatuses[email];
+
+                String formattedTime = formatSentTime(sentTime.toString());
 
                 return GestureDetector(
                   onTap: () {
@@ -401,15 +583,52 @@ class _ChatsPageState extends State<ChatsPage> with WidgetsBindingObserver {
                         ),
                         Expanded(
                           child: Column(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween, // Equal spacing between children
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Padding(
-                                padding: const EdgeInsets.symmetric(
-                                    vertical: 12.0, horizontal: 16.0),
+                                padding: const EdgeInsets.only(left: 4.0, right: 16.0, top: 4.0, bottom: 4.0),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    // Name text, truncated if needed
+                                    Expanded(
+                                      child: Text(
+                                        name,
+                                        style: TextStyle(
+                                          fontWeight: messageStatus == 'Seen' ? FontWeight.normal : FontWeight.bold,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+
+                                    // Sent time at the right side
+                                    Padding(
+                                      padding: const EdgeInsets.only(left: 8.0),
+                                      child: Text(
+                                        formattedTime.toString(),
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: messageStatus == 'Seen' ? FontWeight.normal : FontWeight.bold,
+                                          color: messageStatus == 'Seen' ? Colors.grey : Colors.black,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.only(left: 4.0, right: 16.0, top: 4.0, bottom: 4.0),
                                 child: Text(
-                                  name,
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.normal),
+                                  lastMessage != null ? lastMessage.toString() : "", // Ensure it's a valid string
+                                  maxLines: 1, // Restrict to a single line
+                                  overflow: TextOverflow.ellipsis, // Truncate with ellipsis
+                                  style: TextStyle(
+                                    fontSize: 12.0,
+                                    fontWeight: messageStatus == 'Seen' ? FontWeight.normal : FontWeight.bold,
+                                    color: messageStatus == 'Seen' ? Colors.grey : Colors.black,
+                                  ),
                                 ),
                               ),
                             ],
