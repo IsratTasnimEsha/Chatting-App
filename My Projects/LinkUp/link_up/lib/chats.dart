@@ -40,102 +40,10 @@ class _ChatsPageState extends State<ChatsPage> with WidgetsBindingObserver {
     _fetchUserColor();
   }
 
-  void _deliveredMessages() async {
-    final chatRef1 = FirebaseDatabase.instance.ref("users/${widget.email}/chat");
-    final chatSnapshot = await chatRef1.get();
-
-    if (chatSnapshot.exists) {
-      for (final chatChild in chatSnapshot.children) {
-        final otherEmail = chatChild.key;
-
-        for (final messageChild in chatChild.children) {
-          final messageId = messageChild.key;
-
-          for (final messageKey in messageChild.children) {
-
-            final senderId = messageKey.key!.replaceAll('_dot_', '.').replaceAll('_at_', '@');
-            final messageData = messageKey.value as Map<dynamic, dynamic>?;
-
-            if (messageData != null) {
-              final status = messageData['status'] as String?; // Access status safely
-
-              if (senderId != widget.email && status == 'Sent') {
-                final nowTime = DateFormat('yyyy-MM-dd H:m:s').format(DateTime.now());
-                await messageKey.ref.update({
-                  'status': 'Delivered',
-                  'deliveredTime': nowTime,
-                });
-
-                final formattedSenderId = senderId.replaceAll('.', '_dot_').replaceAll('@', '_at_');
-                await FirebaseDatabase.instance.ref("users/$otherEmail/chat/${widget.email}/$messageId/$formattedSenderId")
-                    .update({
-                      'status': 'Delivered',
-                      'deliveredTime': nowTime,
-                });
-
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-
-  void _fetchUserColor() {
-    DatabaseReference colorRef = FirebaseDatabase.instance
-        .ref('users/${widget.email}/appColor');
-
-    colorRef.onValue.listen((event) {
-      if (event.snapshot.exists) {
-        String colorValue = event.snapshot.value.toString();
-        setState(() {
-          color_1 = _getColorFromHex(colorValue); // Convert the color string to Color
-        });
-      }
-    });
-  }
-
-  Color _getColorFromHex(String hexColor) {
-    hexColor = hexColor.replaceAll("#", "");
-    if (hexColor.length == 6) {
-      hexColor = "FF$hexColor"; // Add alpha if not provided
-    }
-    return Color(int.parse(hexColor, radix: 16));
-  }
-
-  void setStatus(String status) async {
-    final DatabaseReference ref = FirebaseDatabase.instance.ref("users/${widget.email}");
-    try {
-      await ref.update({
-        'activeStatus': status,
-      });
-    } catch (e) {
-      print('Error updating status: $e');
-    }
-
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      // App is in the foreground, set status to online
-      setStatus('Online');
-    } else if (state == AppLifecycleState.paused) {
-      // App is in the background, set status to offline
-      setStatus('Offline');
-    }
-  }
-
-  @override
-  void dispose() {
-    _usersRef.onValue.drain();
-    FirebaseDatabase.instance.ref("users/${widget.email}/chat").onValue.drain();
-    WidgetsBinding.instance.removeObserver(this);
-    super.dispose();
-  }
-
   void _initListeners() {
     final chatRef = FirebaseDatabase.instance.ref("users/${widget.email}/chat");
+
+    // Listen for changes in the chat reference in real-time
     chatRef.onValue.listen((event) async {
       final snapshot = event.snapshot;
       if (snapshot.exists) {
@@ -173,7 +81,6 @@ class _ChatsPageState extends State<ChatsPage> with WidgetsBindingObserver {
               // Access the first child in the snapshot
               final lastMessage = lastMessageSnapshot.children.first;
 
-              // Access the 'content' field of that first child
               lastMessageContent = lastMessage.child('content').value?.toString();
               sentTimeContent = lastMessage.child('sentTime').value?.toString();
               messageStatusContent = lastMessage.child('status').value?.toString();
@@ -278,6 +185,108 @@ class _ChatsPageState extends State<ChatsPage> with WidgetsBindingObserver {
         }
       }
     });
+
+    // Listen for message status updates and change 'Sent' to 'Delivered'
+    final chatRefForStatusUpdate = FirebaseDatabase.instance.ref("users/${widget.email}/chat");
+    chatRefForStatusUpdate.onChildAdded.listen((event) async {
+      await _deliveredMessages(); // Ensure all messages are updated to Delivered
+    });
+
+    chatRefForStatusUpdate.onChildChanged.listen((event) async {
+      await _deliveredMessages(); // Update message status changes in real-time
+    });
+  }
+
+  Future<void> _deliveredMessages() async {
+    final chatRef = FirebaseDatabase.instance.ref("users/${widget.email}/chat");
+    final chatSnapshot = await chatRef.get();
+
+    if (chatSnapshot.exists) {
+      for (final chatChild in chatSnapshot.children) {
+        final otherEmail = chatChild.key;
+
+        for (final messageChild in chatChild.children) {
+          final messageId = messageChild.key;
+
+          for (final messageKey in messageChild.children) {
+            final senderId = messageKey.key!.replaceAll('_dot_', '.').replaceAll('_at_', '@');
+            final messageData = messageKey.value as Map<dynamic, dynamic>?;
+
+            if (messageData != null) {
+              final status = messageData['status'] as String?; // Access status safely
+
+              if (senderId != widget.email && status == 'Sent') {
+                final nowTime = DateFormat('yyyy-MM-dd H:m:s').format(DateTime.now());
+                await messageKey.ref.update({
+                  'status': 'Delivered',
+                  'deliveredTime': nowTime,
+                });
+
+                final formattedSenderId = senderId.replaceAll('.', '_dot_').replaceAll('@', '_at_');
+                await FirebaseDatabase.instance.ref("users/$otherEmail/chat/${widget.email}/$messageId/$formattedSenderId")
+                    .update({
+                  'status': 'Delivered',
+                  'deliveredTime': nowTime,
+                });
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  void _fetchUserColor() {
+    DatabaseReference colorRef = FirebaseDatabase.instance
+        .ref('users/${widget.email}/appColor');
+
+    colorRef.onValue.listen((event) {
+      if (event.snapshot.exists) {
+        String colorValue = event.snapshot.value.toString();
+        setState(() {
+          color_1 = _getColorFromHex(colorValue); // Convert the color string to Color
+        });
+      }
+    });
+  }
+
+  Color _getColorFromHex(String hexColor) {
+    hexColor = hexColor.replaceAll("#", "");
+    if (hexColor.length == 6) {
+      hexColor = "FF$hexColor"; // Add alpha if not provided
+    }
+    return Color(int.parse(hexColor, radix: 16));
+  }
+
+  void setStatus(String status) async {
+    final DatabaseReference ref = FirebaseDatabase.instance.ref("users/${widget.email}");
+    try {
+      await ref.update({
+        'activeStatus': status,
+      });
+    } catch (e) {
+      print('Error updating status: $e');
+    }
+
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // App is in the foreground, set status to online
+      setStatus('Online');
+    } else if (state == AppLifecycleState.paused) {
+      // App is in the background, set status to offline
+      setStatus('Offline');
+    }
+  }
+
+  @override
+  void dispose() {
+    _usersRef.onValue.drain();
+    FirebaseDatabase.instance.ref("users/${widget.email}/chat").onValue.drain();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
   }
 
   Future<String?> _loadProfilePic(String email) async {

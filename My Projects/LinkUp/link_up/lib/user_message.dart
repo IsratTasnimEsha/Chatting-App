@@ -49,10 +49,201 @@ class _UserMessagePageState extends State<UserMessagePage> {
     _fetchUserData();
     _listenToMessages();
     _seenMessages();
-    _setupMessageListener();
     _checkFriendStatus();
     _checkBlockStatus();
     _fetchUserColor(); // Fetch the color for other_email
+  }
+
+  void _listenToMessages() {
+    final String currentUserEmail = widget.email;
+    final String otherUserEmail = widget.other_email;
+
+    final chatRef = FirebaseDatabase.instance.ref()
+        .child('users')
+        .child(otherUserEmail)
+        .child('chat')
+        .child(currentUserEmail);
+
+    // Listen for new messages
+    chatRef.onChildAdded.listen((event) async {
+      final messageKey = event.snapshot.key; // This will be the push() key
+      final chatRef1 = chatRef.child('$messageKey');
+
+      try {
+        final snapshot = await chatRef1.once();
+        final data = snapshot.snapshot.value as Map<dynamic, dynamic>?;
+
+        if (data != null) {
+          String senderId = '';
+          String? content;
+          bool isEdited = false;
+          String? sentTime;
+          String status = 'Sent';
+          String? deliveredTime;
+          String? seenTime;
+
+          if (data.containsKey('content')) {
+            // Flat structure
+            content = data['content'] as String?;
+            isEdited = data['edited'] ?? false;
+            sentTime = data['sentTime'] as String?;
+            status = data['status'] ?? 'Sent';
+            deliveredTime = data['deliveredTime'] as String?;
+            seenTime = data['seenTime'] as String?;
+
+          } else {
+            // Nested structure
+            for (var key in data.keys) {
+              if (key != 'content' && key != 'edited' && key != 'sentTime' && key != 'status'
+                  && key != 'seenTime' && key != 'deliveredTime') {
+                senderId = key;
+                content = data[key]?['content'] as String?;
+                isEdited = data[key]?['edited'] ?? false;
+                sentTime = data[key]?['sentTime'] as String?;
+                status = data[key]?['status'] ?? 'Sent';
+                deliveredTime = data[key]?['deliveredTime'] as String?;
+                seenTime = data[key]?['seenTime'] as String?;
+              }
+            }
+          }
+
+          setState(() {
+            _messages.add({
+              'message_key': messageKey,
+              'sender_id': senderId,
+              'content': content ?? '',
+              'edited': isEdited,
+              'sentTime': sentTime ?? '',
+              'status': status,
+              'deliveredTime': deliveredTime ?? '',
+              'seenTime': seenTime ?? '',
+            });
+            _scrollToBottom();
+          });
+        } else {
+          print('No snapshot value exists for message key: $messageKey');
+        }
+      } catch (e) {
+        print('Error retrieving new message content: $e');
+      }
+    });
+
+    // Listen for message updates
+    chatRef.onChildChanged.listen((event) async {
+      final messageKey = event.snapshot.key; // The push() key of the message
+      final chatRef1 = chatRef.child('$messageKey'); // Reference to the updated message
+
+      try {
+        // Fetch the updated data
+        final snapshot = await chatRef1.once();
+        final data = snapshot.snapshot.value as Map<dynamic, dynamic>?;
+
+        if (data != null) {
+
+          String senderId = '';
+          String? content;
+          bool isEdited = false;
+          String? sentTime;
+          String status = 'Sent';
+          String? deliveredTime;
+          String? seenTime;
+
+          if (data.containsKey('content')) {
+            // Flat structure
+            content = data['content'] as String?;
+            isEdited = data['edited'] ?? false;
+            sentTime = data['sentTime'] as String?;
+            status = data['status'] ?? 'Sent';
+            deliveredTime = data['deliveredTime'] as String?;
+            seenTime = data['seenTime'] as String?;
+
+          } else {
+            // Nested structure
+            for (var key in data.keys) {
+              if (key != 'content' && key != 'edited' && key != 'sentTime' &&
+                  key != 'status' && key != 'seenTime') {
+                senderId = key;
+                content = data[key]?['content'] as String?;
+                isEdited = data[key]?['edited'] ?? false;
+                sentTime = data[key]?['sentTime'] as String?;
+                status = data[key]?['status'] ?? 'Sent';
+                deliveredTime = data[key]?['deliveredTime'] as String?;
+                seenTime = data[key]?['seenTime'] as String?;
+              }
+            }
+          }
+
+          final nowTime = DateFormat('yyyy-MM-dd H:m:s').format(DateTime.now());
+
+          // Update the message in the _messages list
+          setState(() {
+            final index = _messages.indexWhere((msg) => msg['message_key'] == messageKey);
+
+            if (index != -1) {
+              // Replace the old message with the updated one
+              _messages[index] = {
+                'message_key': messageKey,
+                'sender_id': senderId,
+                'content': content ?? '',
+                'edited': isEdited,
+                'sentTime': sentTime ?? '',
+                'status': status,
+                'deliveredTime': deliveredTime ?? '',
+                'seenTime': seenTime ?? '',
+              };
+            } else {
+              print('Updated message not found in the list');
+            }
+          });
+
+          // Check if status is "Delivered" or "Sent" and update to "Seen"
+          if (status == 'Delivered' || status == 'Sent') {
+            final messageRef = chatRef1.child(senderId);
+
+            // Update the message status to "Seen" and add seenTime
+            await messageRef.update({
+              'status': 'Seen',
+              'seenTime': nowTime,
+            });
+
+            // Update on both sides (sender and receiver)
+            final otherUserRef = FirebaseDatabase.instance.ref('users/$currentUserEmail/chat/$otherUserEmail/$messageKey/$senderId');
+            await otherUserRef.update({
+              'status': 'Seen',
+              'seenTime': nowTime,
+            });
+
+            print('Updated message status to "Seen" and added seenTime.');
+          }
+
+          if (status == 'Sent') {
+            final messageRef = chatRef1.child(senderId);
+
+            // Update the message status to "Seen" and add seenTime
+            await messageRef.update({
+              'status': 'Seen',
+              'deliveredTime': nowTime,
+              'seenTime': nowTime,
+            });
+
+            // Update on both sides (sender and receiver)
+            final otherUserRef = FirebaseDatabase.instance.ref('users/$currentUserEmail/chat/$otherUserEmail/$messageKey/$senderId');
+            await otherUserRef.update({
+              'status': 'Seen',
+              'deliveredTime': nowTime,
+              'seenTime': nowTime,
+            });
+
+            print('Updated message status to "Seen" and added seenTime.');
+          }
+
+        } else {
+          print('No data exists for updated message ID: $messageKey');
+        }
+      } catch (e) {
+        print('Error updating message content: $e');
+      }
+    });
   }
 
   void _seenMessages() async {
@@ -76,56 +267,30 @@ class _UserMessagePageState extends State<UserMessagePage> {
         for (final messageId in messages.keys) {
           final messageRef = FirebaseDatabase.instance.ref('users/$otherUserEmail/chat/$currentUserEmail/$messageId');
 
-          // Use a real-time listener to track changes to the message status
-          messageRef.onChildChanged.listen((event) async {
-            final messageData = event.snapshot.value as Map<dynamic, dynamic>?;
-            if (messageData != null) {
-              final senderId = messageData.keys.first;
+          final snapshot = await messageRef.once();
+          final data = snapshot.snapshot.value as Map<dynamic, dynamic>?;
 
-              if (senderId == widget.other_email) {
-                final status = messageData[senderId]['status'] as String?;
+          if (data != null) {
+            final senderId = data.keys.first;
 
-                if (status == 'Delivered') {
-                  final nowTime = DateFormat('yyyy-MM-dd H:m:s').format(DateTime.now());
+            if (senderId == widget.other_email) {
+              final nowTime = DateFormat('yyyy-MM-dd H:m:s').format(DateTime.now());
 
-                  // Update both sides of the chat to mark the message as 'Seen'
-                  await messageRef.child(senderId).update({
-                    'seenTime': nowTime,
-                    'status': 'Seen',
-                  });
+              // Update both sides of the chat to mark the message as 'Seen'
+              await messageRef.child(senderId).update({
+                'seenTime': nowTime,
+                'status': 'Seen',
+              });
 
-                  await FirebaseDatabase.instance.ref('users/$currentUserEmail/chat/$otherUserEmail/$messageId/$senderId')
-                      .update({
-                    'seenTime': nowTime,
-                    'status': 'Seen',
-                  });
+              await FirebaseDatabase.instance.ref('users/$currentUserEmail/chat/$otherUserEmail/$messageId/$senderId')
+                  .update({
+                'seenTime': nowTime,
+                'status': 'Seen',
+              });
 
-                  print('Updated seenTime and status to "Seen" for senderId: $senderId.');
-                }
-
-                if (status == 'Sent') {
-                  final nowTime = DateFormat('yyyy-MM-dd H:m:s').format(DateTime.now());
-
-                  // Update both sides of the chat to mark the message as 'Seen'
-                  await messageRef.child(senderId).update({
-                    'deliveredTime': nowTime,
-                    'seenTime': nowTime,
-                    'status': 'Seen',
-                  });
-
-                  await FirebaseDatabase.instance.ref('users/$currentUserEmail/chat/$otherUserEmail/$messageId/$senderId')
-                      .update({
-                    'deliveredTime': nowTime,
-                    'seenTime': nowTime,
-                    'status': 'Seen',
-                  });
-
-                  print('Updated seenTime and status to "Seen" for senderId: $senderId.');
-                }
-              }
-
+              print('Updated seenTime and status to "Seen" for senderId: $senderId.');
             }
-          });
+          }
         }
       } else {
         print('No messages found for the chat.');
@@ -133,32 +298,6 @@ class _UserMessagePageState extends State<UserMessagePage> {
     } catch (error) {
       print('Error updating message statuses: $error');
     }
-  }
-
-  void _setupMessageListener() {
-    final String currentUserEmail = widget.email;
-    final String otherUserEmail = widget.other_email;
-
-    // Listen for changes to the messages
-    final chatRef = FirebaseDatabase.instance.ref()
-        .child('users')
-        .child(otherUserEmail)
-        .child('chat')
-        .child(currentUserEmail);
-
-    chatRef.onChildChanged.listen((event) {
-      final messageData = event.snapshot.value as Map<dynamic, dynamic>?;
-      if (messageData != null) {
-        final messageId = event.snapshot.key;
-        final senderId = messageData.keys.first;
-
-        if (messageData[senderId]['status'] == 'Seen') {
-          // You can update your chat UI accordingly here
-          print('Message $messageId marked as "Seen" for sender $senderId.');
-          // Update your UI or message list here
-        }
-      }
-    });
   }
 
   void _fetchUserColor() {
@@ -251,152 +390,6 @@ class _UserMessagePageState extends State<UserMessagePage> {
     super.dispose();
   }
 
-  void _listenToMessages() {
-    final chatRef = _userRef.child('${widget.email}/chat/${widget.other_email}');
-
-    // Listen for new messages
-    chatRef.onChildAdded.listen((event) async {
-      final messageKey = event.snapshot.key; // This will be the push() key
-      final chatRef1 = chatRef.child('$messageKey');
-
-      try {
-        final snapshot = await chatRef1.once();
-        final data = snapshot.snapshot.value as Map<dynamic, dynamic>?;
-
-        if (data != null) {
-          String senderId = '';
-          String? content;
-          bool isEdited = false;
-          String? sentTime;
-          String status = 'Sent';
-          String? deliveredTime;
-          String? seenTime;
-
-          if (data.containsKey('content')) {
-            // Flat structure
-            content = data['content'] as String?;
-            isEdited = data['edited'] ?? false;
-            sentTime = data['sentTime'] as String?;
-            status = data['status'] ?? 'Sent';
-            deliveredTime = data['deliveredTime'] as String?;
-            seenTime = data['seenTime'] as String?;
-
-          } else {
-            // Nested structure
-            for (var key in data.keys) {
-              if (key != 'content' && key != 'edited' && key != 'sentTime' && key != 'status'
-                  && key != 'seenTime' && key != 'deliveredTime') {
-                senderId = key;
-                content = data[key]?['content'] as String?;
-                isEdited = data[key]?['edited'] ?? false;
-                sentTime = data[key]?['sentTime'] as String?;
-                status = data[key]?['status'] ?? 'Sent';
-                deliveredTime = data[key]?['deliveredTime'] as String?;
-                seenTime = data[key]?['seenTime'] as String?;
-              }
-            }
-          }
-
-          setState(() {
-            _messages.add({
-              'message_key': messageKey,
-              'sender_id': senderId,
-              'content': content ?? '',
-              'edited': isEdited,
-              'sentTime': sentTime ?? '',
-              'status': status,
-              'deliveredTime': deliveredTime ?? '',
-              'seenTime': seenTime ?? '',
-            });
-            _scrollToBottom();
-          });
-        } else {
-          print('No snapshot value exists for message key: $messageKey');
-        }
-      } catch (e) {
-        print('Error retrieving new message content: $e');
-      }
-
-    });
-
-    // Listen for message updates
-    chatRef.onChildChanged.listen((event) async {
-      final messageKey = event.snapshot.key; // The push() key of the message
-      final chatRef1 = chatRef.child('$messageKey'); // Reference to the updated message
-
-      try {
-        // Fetch the updated data
-        final snapshot = await chatRef1.once();
-        final data = snapshot.snapshot.value as Map<dynamic, dynamic>?;
-
-        if (data != null) {
-
-          String senderId = '';
-          String? content;
-          bool isEdited = false;
-          String? sentTime;
-          String status = 'Sent';
-          String? deliveredTime;
-          String? seenTime;
-
-          if (data.containsKey('content')) {
-            // Flat structure
-            content = data['content'] as String?;
-            isEdited = data['edited'] ?? false;
-            sentTime = data['sentTime'] as String?;
-            status = data['status'] ?? 'Sent';
-            deliveredTime = data['deliveredTime'] as String?;
-            seenTime = data['seenTime'] as String?;
-
-          } else {
-            // Nested structure
-            for (var key in data.keys) {
-              if (key != 'content' && key != 'edited' && key != 'sentTime' &&
-                  key != 'status' && key != 'seenTime') {
-                senderId = key;
-                content = data[key]?['content'] as String?;
-                isEdited = data[key]?['edited'] ?? false;
-                sentTime = data[key]?['sentTime'] as String?;
-                status = data[key]?['status'] ?? 'Sent';
-                deliveredTime = data[key]?['deliveredTime'] as String?;
-                seenTime = data[key]?['seenTime'] as String?;
-              }
-            }
-          }
-
-          final nowTime = DateFormat('yyyy-MM-dd H:m:s').format(
-              DateTime.now());
-
-          // Update the message in the _messages list
-          setState(() {
-            final index =
-            _messages.indexWhere((msg) => msg['message_key'] == messageKey);
-
-            if (index != -1) {
-              // Replace the old message with the updated one
-              _messages[index] = {
-                'message_key': messageKey,
-                'sender_id': senderId,
-                'content': content ?? '',
-                'edited': isEdited,
-                'sentTime': sentTime ?? '',
-                'status': status,
-                'deliveredTime': deliveredTime ?? '',
-                'seenTime': seenTime ?? '',
-              };
-            } else {
-              print('Updated message not found in the list');
-            }
-          });
-
-        } else {
-          print('No data exists for updated message ID: $messageKey');
-        }
-      } catch (e) {
-        print('Error updating message content: $e');
-      }
-    });
-  }
 
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
