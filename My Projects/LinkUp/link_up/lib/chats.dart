@@ -151,6 +151,14 @@ class _ChatsPageState extends State<ChatsPage> with WidgetsBindingObserver {
                   .value
                   ?.toString();
 
+              if (lastMessageContent == '**##image*#@#*storage##**') {
+                lastMessageContent = 'Sent an Image.';
+              }
+
+              if (lastMessageContent == '**##document*#@#*storage##**') {
+                lastMessageContent = 'Sent a Document.';
+              }
+
               if (firstKey == widget.email) {
                 lastMessageContent = 'You: ' + lastMessageContent.toString();
               }
@@ -364,14 +372,15 @@ class _ChatsPageState extends State<ChatsPage> with WidgetsBindingObserver {
   }
 
   Future<void> _showMarkAsUnreadDialog(String otherEmail) async {
-    final chatRef = FirebaseDatabase.instance.ref("users/${widget.email}/chat");
+    final chatRef1 = FirebaseDatabase.instance.ref("users/${widget.email}/chat");
+    final chatRef2 = FirebaseDatabase.instance.ref("users/${otherEmail}/chat");
 
     // Fetch the last message for the conversation with the other user
-    final lastMessageSnapshot = await chatRef.child(otherEmail).orderByKey().limitToLast(1).get();
+    final lastMessageSnapshot1 = await chatRef1.child(otherEmail).orderByKey().limitToLast(1).get();
 
-    if (lastMessageSnapshot.exists) {
+    if (lastMessageSnapshot1.exists) {
       // Access the first child in the snapshot (last message)
-      final lastMessage = lastMessageSnapshot.children.first;
+      final lastMessage = lastMessageSnapshot1.children.first;
 
       // Get the key of the sender (the other user's email)
       String? firstKey;
@@ -381,12 +390,31 @@ class _ChatsPageState extends State<ChatsPage> with WidgetsBindingObserver {
 
       if (firstKey != widget.email) {
         // Update the 'status' field to "Delivered"
-        await chatRef.child(otherEmail)
+        await chatRef1.child(otherEmail)
+            .child(lastMessage.key!)
+            .child(firstKey.toString().replaceAll('.', '_dot_').replaceAll('@', '_at_'))
+            .child('status')
+            .set('Delivered');
+
+        await chatRef2.child(widget.email)
             .child(lastMessage.key!)
             .child(firstKey.toString().replaceAll('.', '_dot_').replaceAll('@', '_at_'))
             .child('status')
             .set('Delivered');
       }
+
+      // Delete the 'seenTime' field from the message
+      await chatRef1.child(otherEmail)
+          .child(lastMessage.key!)
+          .child(firstKey.toString().replaceAll('.', '_dot_').replaceAll('@', '_at_'))
+          .child('seenTime')
+          .remove();
+
+      await chatRef2.child(widget.email)
+          .child(lastMessage.key!)
+          .child(firstKey.toString().replaceAll('.', '_dot_').replaceAll('@', '_at_'))
+          .child('seenTime')
+          .remove();
 
       // Optionally, you can update the local state if necessary
       setState(() {

@@ -48,10 +48,70 @@ class _UserMessagePageState extends State<UserMessagePage> {
     super.initState();
     _fetchUserData();
     _listenToMessages();
+    _seenMessages();
     _checkFriendStatus();
     _checkBlockStatus();
     _fetchUserColor(); // Fetch the color for other_email
   }
+
+  void _seenMessages() async {
+    final String currentUserEmail = widget.email;
+    final String otherUserEmail = widget.other_email;
+    final DatabaseReference chatRef = FirebaseDatabase.instance
+        .ref()
+        .child('users')
+        .child(otherUserEmail)
+        .child('chat')
+        .child(currentUserEmail);
+
+    try {
+      // Fetch all messages in the chat reference
+      final DataSnapshot snapshot = await chatRef.get();
+
+      if (snapshot.exists) {
+        final Map<dynamic, dynamic> messages = snapshot.value as Map<dynamic, dynamic>;
+
+        print('\n=== Checking Messages for Seen Update ===');
+        for (final messageId in messages.keys) {
+          final messageRef = _userRef.child('${widget.other_email}/chat/${widget.email}/$messageId');
+          final snapshot = await messageRef.once();
+          final data = snapshot.snapshot.value as Map<dynamic, dynamic>?;
+
+          if (data != null && data.isNotEmpty) {
+            final senderId = data.keys.first;
+
+            print('First child key: $senderId');
+            if(senderId == widget.other_email) {
+              final nowTime = DateFormat('yyyy-MM-dd H:m:s').format(DateTime.now());
+
+              try {
+                await messageRef.child(senderId).update({
+                  'seenTime': nowTime,
+                  'status': 'Seen',
+                });
+                print('Updated seenTime and status to "Seen" for senderId: $senderId');
+              } catch (e) {
+                print('Error updating seenTime and status: $e');
+              }
+
+              await _userRef.child('${widget.email}/chat/${widget.other_email}/$messageId')
+                  .child(senderId).update({
+                    'seenTime': nowTime,
+                    'status': 'Seen',
+              });
+            }
+          } else {
+            print('No data or empty message for $messageId');
+          }
+        }
+      } else {
+        print('No messages found for the chat.');
+      }
+    } catch (error) {
+      print('Error updating message statuses: $error');
+    }
+  }
+
 
   void _fetchUserColor() {
     DatabaseReference colorRef =
@@ -161,6 +221,7 @@ class _UserMessagePageState extends State<UserMessagePage> {
           bool isEdited = false;
           String? sentTime;
           String status = 'Sent';
+          String? seenTime;
 
           if (data.containsKey('content')) {
             // Flat structure
@@ -168,50 +229,19 @@ class _UserMessagePageState extends State<UserMessagePage> {
             isEdited = data['edited'] ?? false;
             sentTime = data['sentTime'] as String?;
             status = data['status'] ?? 'Sent';
+            seenTime = data['seenTime'] as String?;
 
           } else {
             // Nested structure
             for (var key in data.keys) {
-              if (key != 'content' && key != 'edited' && key != 'sentTime' && key != 'status') {
+              if (key != 'content' && key != 'edited' && key != 'sentTime' && key != 'status' && key != 'seenTime') {
                 senderId = key;
                 content = data[key]?['content'] as String?;
                 isEdited = data[key]?['edited'] ?? false;
                 sentTime = data[key]?['sentTime'] as String?;
                 status = data[key]?['status'] ?? 'Sent';
+                seenTime = data[key]?['seenTime'] as String?;
               }
-            }
-          }
-
-          if (widget.other_email == senderId) {
-            print('\n========== IMPORTANT LOG ==========\n\n\n\n\n');
-            print('senderId: $senderId');
-            print('widget.email: ${widget.email}');
-            print('widget.other_email: ${widget.other_email}');
-            print('\n\n\n\n\n===================================\n');
-
-            final nowTime = DateFormat('yyyy-MM-dd H:m:s').format(
-                DateTime.now());
-
-            try {
-              await _userRef.child('${widget.email}/chat/${widget
-                  .other_email}/$messageKey/$senderId')
-                  .update({
-                'status': 'Seen',
-                'seenTime': nowTime,
-              });
-            } catch (e) {
-              print('Error updating Seen status for current user: $e');
-            }
-
-            try {
-              await _userRef.child('${widget.other_email}/chat/${widget
-                  .email}/$messageKey/$senderId')
-                  .update({
-                'status': 'Seen',
-                'seenTime': nowTime,
-              });
-            } catch (e) {
-              print('Error updating Seen status for other user: $e');
             }
           }
 
@@ -223,6 +253,7 @@ class _UserMessagePageState extends State<UserMessagePage> {
               'edited': isEdited,
               'sentTime': sentTime ?? '',
               'status': status,
+              'seenTime': seenTime ?? '',
             });
             _scrollToBottom();
           });
@@ -252,6 +283,7 @@ class _UserMessagePageState extends State<UserMessagePage> {
           bool isEdited = false;
           String? sentTime;
           String status = 'Sent';
+          String? seenTime;
 
           if (data.containsKey('content')) {
             // Flat structure
@@ -259,53 +291,25 @@ class _UserMessagePageState extends State<UserMessagePage> {
             isEdited = data['edited'] ?? false;
             sentTime = data['sentTime'] as String?;
             status = data['status'] ?? 'Sent';
+            seenTime = data['seenTime'] as String?;
+
           } else {
             // Nested structure
             for (var key in data.keys) {
               if (key != 'content' && key != 'edited' && key != 'sentTime' &&
-                  key != 'status') {
+                  key != 'status' && key != 'seenTime') {
                 senderId = key;
                 content = data[key]?['content'] as String?;
                 isEdited = data[key]?['edited'] ?? false;
                 sentTime = data[key]?['sentTime'] as String?;
                 status = data[key]?['status'] ?? 'Sent';
+                seenTime = data[key]?['seenTime'] as String?;
               }
             }
           }
 
-          if (widget.other_email == senderId) {
-            print('\n========== IMPORTANT LOG ==========\n\n\n\n\n');
-            print('senderId: $senderId');
-            print('widget.email: ${widget.email}');
-            print('widget.other_email: ${widget.other_email}');
-            print('\n\n\n\n\n===================================\n');
-
-
-            final nowTime = DateFormat('yyyy-MM-dd H:m:s').format(
-                DateTime.now());
-
-            try {
-              await _userRef.child('${widget.email}/chat/${widget
-                  .other_email}/$messageKey/$senderId')
-                  .update({
-                'status': 'Seen',
-                'seenTime': nowTime,
-              });
-            } catch (e) {
-              print('Error updating Seen status for current user: $e');
-            }
-
-            try {
-              await _userRef.child('${widget.other_email}/chat/${widget
-                  .email}/$messageKey/$senderId')
-                  .update({
-                'status': 'Seen',
-                'seenTime': nowTime,
-              });
-            } catch (e) {
-              print('Error updating Seen status for other user: $e');
-            }
-          }
+          final nowTime = DateFormat('yyyy-MM-dd H:m:s').format(
+              DateTime.now());
 
           // Update the message in the _messages list
           setState(() {
@@ -321,6 +325,7 @@ class _UserMessagePageState extends State<UserMessagePage> {
                 'edited': isEdited,
                 'sentTime': sentTime ?? '',
                 'status': status,
+                'seenTime': seenTime ?? '',
               };
             } else {
               print('Updated message not found in the list');
@@ -702,7 +707,7 @@ class _UserMessagePageState extends State<UserMessagePage> {
   }
 
   void _showDeleteOptions(
-      String messageKey, String secondValue, String currentMessage) {
+      String messageKey, String secondValue, String currentMessage, String messageValue, String sentTime, String seenTime) {
     final isCurrentUser = widget.email == secondValue;
 
     showModalBottomSheet(
@@ -773,6 +778,95 @@ class _UserMessagePageState extends State<UserMessagePage> {
                     _deleteMessage(messageKey, false);
                   },
                 ),
+              ListTile(
+                leading: Icon(Icons.info),
+                title: Text('Details'),
+                onTap: () {
+                  Navigator.pop(context); // Close the bottom sheet
+                  showDialog(
+                    context: context,
+                    builder: (BuildContext context) {
+                      return AlertDialog(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12), // Rounded corners
+                        ),
+                        title: Row(
+                          children: [
+                            SizedBox(width: 8),
+                            Text('Message Details'),
+                          ],
+                        ),
+                        content: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.message),
+                                SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Content:',
+                                    style: TextStyle(fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.only(left: 32),
+                              child: Text(messageValue),
+                            ),
+                            SizedBox(height: 16), // Spacing
+                            Row(
+                              children: [
+                                Icon(Icons.access_time),
+                                SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Sent:',
+                                    style: TextStyle(fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.only(left: 32),
+                              child: Text(formatTime(sentTime) ?? 'Unknown'),
+                            ),
+                            if (seenTime != null && seenTime.isNotEmpty) ...[
+                              SizedBox(height: 16), // Spacing for `Seen` time if it exists
+                              Row(
+                                children: [
+                                  Icon(Icons.visibility,),
+                                  SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      'Seen:',
+                                      style: TextStyle(fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.only(left: 32),
+                                child: Text(formatTime(seenTime!)),
+                              ),
+                            ],
+                          ],
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () {
+                              Navigator.pop(context); // Close the dialog
+                            },
+                            child: Text('Close'),
+                          ),
+                        ],
+                      );
+                    },
+                  );
+                },
+              ),
             ],
           ),
         );
@@ -899,7 +993,7 @@ class _UserMessagePageState extends State<UserMessagePage> {
     }
   }
 
-  String formatSentTime(String sentTime) {
+  String formatTime(String sentTime) {
     try {
       // Parse the input string to a DateTime object
       DateTime dateTime = DateFormat("yyyy-MM-dd H:m:s").parse(sentTime);
@@ -987,8 +1081,9 @@ class _UserMessagePageState extends State<UserMessagePage> {
                   final sentTime = message['sentTime'];
                   final isEdited = message['edited'];
                   final status = message['status'];
+                  final seenTime = message['seenTime'];
 
-                  String formattedTime = formatSentTime(sentTime);
+                  String formattedTime = formatTime(sentTime);
 
                   // Check for null content
                   if (content == null) {
@@ -1003,12 +1098,24 @@ class _UserMessagePageState extends State<UserMessagePage> {
                   isOtherUserMessage ? widget.other_email : widget.email;
                   final thirdValue = content;
 
+                  String messageValue = ''; // Initialize as an empty string (or any other default value)
+                  if (content == '**##image*#@#*storage##**') {
+                    messageValue = 'Image'; // If the content is the image marker, set messageValue to "Image"
+                  }
+                  else if (content == '**##document*#@#*storage##**') {
+                    messageValue = 'Document'; // If the content is the document marker, set messageValue to "Document"
+                  }
+                  else {
+                    messageValue = content; // Otherwise, just keep the original content
+                  }
+
+
                   return Padding(
                     padding: const EdgeInsets.symmetric(
                         vertical: 4.0, horizontal: 8.0),
                     child: GestureDetector(
                       onLongPress: () {
-                        _showDeleteOptions(messageKey, secondValue, thirdValue);
+                        _showDeleteOptions(messageKey, secondValue, thirdValue, messageValue, sentTime, seenTime);
                       },
                       onTap: () {
                         setState(() {
