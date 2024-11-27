@@ -53,8 +53,6 @@ Below are screenshots showcasing key features of **LinkUp**:
 
 (Add your screenshots here)
 
----
-
 ## Technologies Used
 
 - **Flutter**: For cross-platform app development.
@@ -63,8 +61,6 @@ Below are screenshots showcasing key features of **LinkUp**:
   - Authentication
   - Real-time Database
   - Storage
-
----
 
 ## How It Works
 
@@ -84,8 +80,6 @@ Below are screenshots showcasing key features of **LinkUp**:
 ### Profile Customization
 - Update profile picture and information.
 - Change password or reset it via email.
-
----
 
 ## Contact
 
