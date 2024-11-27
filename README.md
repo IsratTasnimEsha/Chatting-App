@@ -61,9 +61,30 @@ Below are screenshots showcasing key features of **LinkUp**:
 | ![Screenshot_20241127-132814](https://github.com/user-attachments/assets/e4c5c686-0528-48d3-b87f-b9f9c12fd817) | ![Screenshot_20241127-132832](https://github.com/user-attachments/assets/4357e2fa-9870-42c4-99d3-6da0da489e2e) |  |
 |---|---|---|
 
-### Edit Profile, Reset Password
+### Edit Profile, Reset Password, Search People
 
+| ![Screenshot_20241127-170147](https://github.com/user-attachments/assets/7ea0a3bd-7941-403b-8a98-2cef5187f33a) | ![Screenshot_20241127-170202](https://github.com/user-attachments/assets/3ae815b9-1546-479f-bb13-4173dd919b28) | ![Screenshot_20241127-132921](https://github.com/user-attachments/assets/0fdfd132-50f8-418f-9b4e-b228cb7c7da6) |
+|---|---|---|
 
+### Requests Sent, Friend Requests, Blocked Contacts
+
+| ![Screenshot_20241127-133028](https://github.com/user-attachments/assets/99409a75-e740-47b0-b32d-30034a0ca37b) | ![Screenshot_20241127-133213](https://github.com/user-attachments/assets/e175809f-95f2-42cf-b8f5-34c58a21d34e) | ![Screenshot_20241127-133155](https://github.com/user-attachments/assets/c415b410-b1e4-4e92-a5ba-caaed2c9d215) |
+|---|---|---|
+
+### User's Profile, Friend's Profile, Chats
+
+| ![Screenshot_20241127-132941](https://github.com/user-attachments/assets/e0aa2f08-d957-482a-af2e-284b19f82fdd) | ![Screenshot_20241127-133502](https://github.com/user-attachments/assets/d52faee5-a76e-415f-b260-dfa80475a98d) | ![Screenshot_20241127-171423](https://github.com/user-attachments/assets/938627aa-6e20-4d10-986a-3e4de74d0632) |
+|---|---|---|
+
+### Char Interface, Message Options, Message Information
+
+| ![Screenshot_20241127-172352](https://github.com/user-attachments/assets/1048016a-4004-48fe-a6a3-19c8e1c58860) | ![Screenshot_20241127-140834](https://github.com/user-attachments/assets/b063dcb7-feb7-4c37-af32-f6769e77cdba) | ![Screenshot_20241127-140815](https://github.com/user-attachments/assets/5e8c3fe7-1e0a-4a7f-b70f-228e4be88bac) |
+|---|---|---|
+
+### Edit Message, Image Download, Document Download
+
+| ![Screenshot_20241127-140711](https://github.com/user-attachments/assets/aee3a285-5da4-4d72-a55d-b21f21ec16ce) | ![Screenshot_20241127-140758](https://github.com/user-attachments/assets/025f2f44-2b11-4ac5-9420-13a8e99b8f60) | ![Screenshot_20241127-173234_Chrome](https://github.com/user-attachments/assets/a745a60d-7502-4d00-94c5-d09eef4da2b1) |
+|---|---|---|
 
 
 ## Technologies Used
