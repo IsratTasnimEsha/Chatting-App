@@ -56,7 +56,7 @@ Below are screenshots showcasing key features of **LinkUp**:
 | ![Screenshot_20241127-132758](https://github.com/user-attachments/assets/0bb52e54-808b-4df9-919d-9dcaf67d2057) | ![Screenshot_20241127-132708](https://github.com/user-attachments/assets/5d8574d8-773e-43b5-966b-254600c84525) | ![Screenshot_20241127-164724_Gmail](https://github.com/user-attachments/assets/7faa77e8-4149-4aef-98cf-b40fc82d11da) |
 |---|---|---|
 
-### Navigation View, App Color Theme, Edit Profile
+### Navigation View, App Color Theme
 
 | ![Screenshot_20241127-132814](https://github.com/user-attachments/assets/e4c5c686-0528-48d3-b87f-b9f9c12fd817) | ![Screenshot_20241127-132832](https://github.com/user-attachments/assets/4357e2fa-9870-42c4-99d3-6da0da489e2e) |  |
 |---|---|---|
