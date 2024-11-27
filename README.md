@@ -76,7 +76,7 @@ Below are screenshots showcasing key features of **LinkUp**:
 | ![Screenshot_20241127-132941](https://github.com/user-attachments/assets/e0aa2f08-d957-482a-af2e-284b19f82fdd) | ![Screenshot_20241127-133502](https://github.com/user-attachments/assets/d52faee5-a76e-415f-b260-dfa80475a98d) | ![Screenshot_20241127-171423](https://github.com/user-attachments/assets/938627aa-6e20-4d10-986a-3e4de74d0632) |
 |---|---|---|
 
-### Char Interface, Message Options, Message Information
+### Chat Interface, Message Options, Message Information
 
 | ![Screenshot_20241127-172352](https://github.com/user-attachments/assets/1048016a-4004-48fe-a6a3-19c8e1c58860) | ![Screenshot_20241127-140834](https://github.com/user-attachments/assets/b063dcb7-feb7-4c37-af32-f6769e77cdba) | ![Screenshot_20241127-140815](https://github.com/user-attachments/assets/5e8c3fe7-1e0a-4a7f-b70f-228e4be88bac) |
 |---|---|---|
