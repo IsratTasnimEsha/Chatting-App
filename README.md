@@ -51,7 +51,11 @@ Below are screenshots showcasing key features of **LinkUp**:
 - Profile Settings
 - Friend Requests
 
-(Add your screenshots here)
+### Login, Registration, Forget Password
+
+| ![Screenshot_20241127-132758](https://github.com/user-attachments/assets/0bb52e54-808b-4df9-919d-9dcaf67d2057) | ![Screenshot_20241127-132708](https://github.com/user-attachments/assets/5d8574d8-773e-43b5-966b-254600c84525) | ![Screenshot_20241127-164724_Gmail](https://github.com/user-attachments/assets/7faa77e8-4149-4aef-98cf-b40fc82d11da) |
+|---|---|---|
+
 
 ## Technologies Used
 
